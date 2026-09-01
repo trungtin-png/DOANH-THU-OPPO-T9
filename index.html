@@ -330,6 +330,9 @@ function parseSheetRows(json){
     const c3 = cell(r,3);
     const shopName = c0 && c0.v ? String(c0.v).trim() : '';
     if(!shopName) continue;
+    const nameUpper = shopName.toUpperCase();
+    const isSummaryRow = ['TOTAL','TỔNG','CỘNG','SUM','TONG','SUBTOTAL'].some(kw => nameUpper === kw || nameUpper.startsWith(kw + ' ') || nameUpper.includes('TỔNG'));
+    if(isSummaryRow) continue;
 
     if(c3 && typeof c3.v === 'number'){
       out.push({
