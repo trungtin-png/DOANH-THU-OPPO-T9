@@ -172,8 +172,8 @@
 const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
 
 const FALLBACK_ROWS = [
-  {shop:'TGDĐ 145', size:'S', group:'NHÓM 5', target:68073589, current:0, pct:0, need:2042207657, bonus:2042207657},
-  {shop:'ĐMX PĐ A', size:'S', group:'NHÓM 4', target:32443310, current:0, pct:0, need:973299290, bonus:973299290},
+  {shop:'TGDĐ 145', size:'S', group:'NHÓM 5', target:68040255, current:1000000, pct:0.00049, need:2041207657, bonus:2042207657},
+  {shop:'ĐMX PĐ A', size:'S', group:'NHÓM 4', target:31776643, current:20000000, pct:0.02055, need:953299290, bonus:973299290},
   {shop:'ĐMX TB', size:'B', group:'NHÓM 7', target:12869338, current:0, pct:0, need:386080130, bonus:386080130},
   {shop:'TGDĐ PĐ', size:'B', group:'NHÓM 5', target:17095988, current:0, pct:0, need:512879637, bonus:512879637},
   {shop:'TGDĐ 180', size:'C', group:'NHÓM 3', target:11461832, current:0, pct:0, need:343854973, bonus:343854973},
@@ -317,45 +317,38 @@ document.querySelectorAll('table.data th').forEach(th=>{
 });
 
 function parseSheetRows(json){
-  const table = json.table;
-  const rows = table.rows;
-  let headerIdx = -1;
-  for(let i=0;i<Math.min(rows.length,6);i++){
-    const c0 = rows[i].c && rows[i].c[0];
-    if(c0 && c0.v && String(c0.v).toUpperCase().includes('TÊN SHOP')){ headerIdx = i; break; }
-  }
-  if(headerIdx === -1) throw new Error('Không tìm thấy dòng tiêu đề');
-
+  const rows = json.table.rows;
   const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
   const numOf = (c) => c && typeof c.v === 'number' ? c.v : 0;
 
   const out = [];
-  for(let i=headerIdx+1; i<rows.length; i++){
-    const r = rows[i];
-    const shopCell = cell(r,0);
-    const shopName = shopCell && shopCell.v ? String(shopCell.v).trim() : '';
-    if(!shopName) break;
-    out.push({
-      shop: shopName,
-      size: (cell(r,1) && cell(r,1).v) ? String(cell(r,1).v).trim() : '',
-      group: (cell(r,2) && cell(r,2).v) ? String(cell(r,2).v).trim() : '',
-      target: numOf(cell(r,3)),
-      current: numOf(cell(r,4)),
-      pct: numOf(cell(r,5)),
-      need: numOf(cell(r,6)),
-      bonus: numOf(cell(r,7))
-    });
-  }
-
   const heso = [];
+
   for(let i=0;i<rows.length;i++){
-    const c0 = rows[i].c && rows[i].c[0];
-    const c1 = rows[i].c && rows[i].c[1];
-    if(c0 && c1 && c0.v && c1.v && ['PHONE','IOT'].includes(String(c0.v).trim().toUpperCase())){
-      heso.push({name:String(c0.v).trim(), value:String(c1.v).trim()});
+    const r = rows[i];
+    const c0 = cell(r,0);
+    const c3 = cell(r,3);
+    const shopName = c0 && c0.v ? String(c0.v).trim() : '';
+    if(!shopName) continue;
+
+    if(c3 && typeof c3.v === 'number'){
+      out.push({
+        shop: shopName,
+        size: (cell(r,1) && cell(r,1).v) ? String(cell(r,1).v).trim() : '',
+        group: (cell(r,2) && cell(r,2).v) ? String(cell(r,2).v).trim() : '',
+        target: numOf(c3),
+        current: numOf(cell(r,4)),
+        pct: numOf(cell(r,5)),
+        need: numOf(cell(r,6)),
+        bonus: numOf(cell(r,7))
+      });
+    } else if(['PHONE','IOT'].includes(shopName.toUpperCase())){
+      const c1 = cell(r,1);
+      heso.push({name: shopName, value: (c1 && c1.v) ? String(c1.v).trim() : ''});
     }
   }
 
+  if(out.length === 0) throw new Error('Không tìm thấy dòng dữ liệu shop nào');
   return { rows: out, heso: heso.length ? heso : FALLBACK_HESO };
 }
 
