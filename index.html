@@ -202,7 +202,8 @@ function render(){
   const totalTarget = currentRows.reduce((s,r)=>s+r.target,0);
   const totalCurrent = currentRows.reduce((s,r)=>s+r.current,0);
   const totalNeed = currentRows.reduce((s,r)=>s+r.need,0);
-  const overallPct = totalTarget ? totalCurrent/totalTarget : 0;
+  const totalBonus = currentRows.reduce((s,r)=>s+r.bonus,0);
+  const overallPct = totalBonus ? totalCurrent/totalBonus : 0;
 
   document.getElementById('statsRow').innerHTML = `
     <div class="stat gold"><div class="label">Tổng target ngày</div><div class="value">${fmt(totalTarget)} ₫</div></div>
