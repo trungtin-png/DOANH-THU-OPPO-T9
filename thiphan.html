@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thị phần & Chi tiết bán hàng — OPPO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --bg:#0E1826; --panel:#142235; --panel-alt:#182A42; --border:rgba(255,255,255,0.08);
+    --gold:#E4A73B; --teal:#33B6A4; --red:#E2574C; --purple:#8B7CD8; --blue:#4C9BE8;
+    --text:#EAF0F6; --muted:#8DA0B5;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1240px;margin:0 auto;padding:36px 24px 80px;}
+
+  header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:24px;}
+  .titleblock h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;margin:0 0 6px;letter-spacing:-0.01em;}
+  .titleblock p{margin:0;color:var(--muted);font-size:13.5px;}
+  .syncbox{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:12.5px;color:var(--muted);white-space:nowrap;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex:none;}
+  .dot.off{background:var(--red);}
+  #refreshBtn{background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12.5px;cursor:pointer;}
+  #refreshBtn:hover{background:var(--panel-alt);}
+
+  .tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid var(--border);}
+  .tab-btn{background:none;border:none;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;margin-right:20px;}
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--teal);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;}
+  .stat .label{font-size:12.5px;color:var(--muted);margin-bottom:8px;}
+  .stat .value{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:600;}
+  .stat.gold .value{color:var(--gold);}
+  .stat.teal .value{color:var(--teal);}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;margin:0 0 16px;}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+  .filters select,.filters input{background:var(--panel-alt);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;}
+  .filters input{flex:1;min-width:160px;}
+  .filters select{min-width:140px;}
+
+  table.data{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  table.data th,table.data td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+  table.data th{color:var(--muted);font-weight:500;font-size:11.5px;cursor:pointer;user-select:none;}
+  table.data th:hover{color:var(--text);}
+  table.data tbody tr:last-child td{border-bottom:none;}
+  table.data tbody tr:hover{background:var(--panel-alt);}
+  table.data td.num{text-align:right;}
+  .empty{padding:36px;text-align:center;color:var(--muted);font-size:13.5px;}
+
+  .pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:12px;font-size:12.5px;color:var(--muted);}
+  .pager button{background:var(--panel-alt);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12.5px;}
+  .pager button:disabled{opacity:0.4;cursor:not-allowed;}
+
+  footer{margin-top:24px;font-size:12px;color:var(--muted);text-align:center;}
+  footer a{color:var(--teal);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="titleblock">
+      <h1>Thị phần & Chi tiết bán hàng</h1>
+      <p>OPPO · Tháng 9/2026</p>
+    </div>
+    <div class="syncbox">
+      <span class="dot" id="syncDot"></span>
+      <span id="syncText">Đang đồng bộ…</span>
+      <button id="refreshBtn" onclick="loadAll()">Làm mới</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="thiphan">Thị phần</button>
+    <button class="tab-btn" data-tab="chitiet">Chi tiết ngày</button>
+  </div>
+
+  <!-- TAB: THỊ PHẦN -->
+  <div class="tab-panel active" id="tab-thiphan">
+    <div class="filters">
+      <select id="segmentFilter"></select>
+      <input type="text" id="shopSearchTP" placeholder="Tìm theo tên shop...">
+    </div>
+
+    <div class="stats" id="tpStats"></div>
+
+    <div class="panel">
+      <h2>Tổng số máy bán theo hãng</h2>
+      <div style="position:relative;height:320px;">
+        <canvas id="tpChart" role="img" aria-label="Biểu đồ số máy bán theo hãng"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Chi tiết theo shop</h2>
+      <div style="overflow-x:auto;">
+        <table class="data" id="tpTable">
+          <thead><tr id="tpTableHead"></tr></thead>
+          <tbody id="tpTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: CHI TIẾT NGÀY -->
+  <div class="tab-panel" id="tab-chitiet">
+    <div class="filters">
+      <input type="text" id="searchCT" placeholder="Tìm theo sản phẩm / mã sản phẩm...">
+      <select id="dateFilterCT"><option value="">Tất cả ngày</option></select>
+      <select id="storeFilterCT"><option value="">Tất cả siêu thị</option></select>
+      <select id="brandFilterCT"><option value="">Tất cả hãng</option></select>
+      <select id="segFilterCT"><option value="">Tất cả phân khúc giá</option></select>
+    </div>
+
+    <div class="stats" id="ctStats"></div>
+
+    <div class="panel">
+      <h2>Số lượng bán theo hãng (theo bộ lọc)</h2>
+      <div style="position:relative;height:280px;">
+        <canvas id="ctChart" role="img" aria-label="Biểu đồ số lượng bán theo hãng"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Danh sách giao dịch</h2>
+      <div style="overflow-x:auto;">
+        <table class="data" id="ctTable">
+          <thead>
+            <tr>
+              <th data-key="date">Ngày</th>
+              <th data-key="store">Siêu thị</th>
+              <th data-key="brand">Hãng</th>
+              <th data-key="segment">Phân khúc giá</th>
+              <th data-key="product">Tên sản phẩm</th>
+              <th data-key="qty" class="num">SL</th>
+              <th data-key="price" class="num">Đơn giá</th>
+              <th data-key="total" class="num">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody id="ctTableBody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span id="pagerInfo"></span>
+        <button id="prevPage">← Trước</button>
+        <button id="nextPage">Sau →</button>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footerNote">Nguồn: Google Sheet "DOANH THU OPPO"</footer>
+</div>
+
+<script>
+const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
+const BRANDS = ['OPPO','SAMSUNG','VIVO','REALME','XIAOMI','IPHONE','OTHER'];
+const BRAND_COLORS = {OPPO:'#33B6A4', SAMSUNG:'#4C9BE8', VIVO:'#E4A73B', REALME:'#E2574C', XIAOMI:'#F2C744', IPHONE:'#8B7CD8', OTHER:'#8DA0B5'};
+
+// ---------- fallback data ----------
+const FALLBACK_TP = {
+  'TỔNG THỊ TRƯỜNG': [
+    {shop:'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[0,0,0,0,0,173,0], total:173, pct:[0,0,0,0,0,1,0]},
+    {shop:'TGD_TNI_GDA - Phước Đông', counts:[40,47,12,11,20,24,14], total:168, pct:[0.24,0.28,0.07,0.07,0.12,0.14,0.08]},
+    {shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', counts:[152,183,61,28,103,108,18], total:653, pct:[0.23,0.28,0.09,0.04,0.16,0.17,0.03]},
+    {shop:'TGD_TNI_TBA - 180 Quốc Lộ 22', counts:[29,25,6,4,17,18,5], total:104, pct:[0.28,0.24,0.06,0.04,0.16,0.17,0.05]},
+    {shop:'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)', counts:[22,33,6,11,12,26,28], total:138, pct:[0.16,0.24,0.04,0.08,0.09,0.19,0.20]},
+    {shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[25,85,11,12,75,0,6], total:214, pct:[0.12,0.40,0.05,0.06,0.35,0,0.03]},
+    {shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', counts:[57,68,11,13,79,34,14], total:276, pct:[0.21,0.25,0.04,0.05,0.29,0.12,0.05]},
+    {shop:'ĐMM_TNI_GDA - Phước Đức B (Phước Đông)', counts:[14,16,15,16,22,25,3], total:111, pct:[0.13,0.14,0.14,0.14,0.20,0.23,0.03]},
+    {shop:'ĐMM_TNI_TBA - An Tịnh', counts:[25,20,13,3,24,8,4], total:97, pct:[0.26,0.21,0.13,0.03,0.25,0.08,0.04]},
+    {shop:'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)', counts:[9,16,11,2,12,8,8], total:66, pct:[0.14,0.24,0.17,0.03,0.18,0.12,0.12]},
+    {shop:'ĐMS_TNI_TBA - 387 ĐT787B', counts:[12,14,4,0,9,1,0], total:40, pct:[0.30,0.35,0.10,0,0.23,0.03,0]},
+    {shop:'ĐMS_TNI_TBA - An Hòa', counts:[29,18,14,20,11,19,2], total:113, pct:[0.26,0.16,0.12,0.18,0.10,0.17,0.02]}
+  ]
+};
+
+const FALLBACK_CT = [
+  {date:'01/08/2026', store:'TGD_TNI_TNI - 229 Cách Mạng Tháng 8', brand:'iPhone', segment:'>=30M', product:'Điện thoại iPhone 17 Pro Max 256GB Silver', qty:1, price:34590000},
+  {date:'01/08/2026', store:'TGD_TNI_TNI - 229 Cách Mạng Tháng 8', brand:'Samsung', segment:'10M-15M', product:'Samsung Galaxy S25 FE S731B (8+128GB) Xanh Navy', qty:1, price:13590000},
+  {date:'01/08/2026', store:'TGD_TNI_TNI - 229 Cách Mạng Tháng 8', brand:'Samsung', segment:'15M-20M', product:'Samsung Galaxy S25 FE S731B (8+256GB) Xanh Nhạt', qty:1, price:17690000},
+  {date:'01/08/2026', store:'TGD_TNI_TNI - 229 Cách Mạng Tháng 8', brand:'Samsung', segment:'10M-15M', product:'Samsung Galaxy A57 (5G) A576B (8G+256G) Xanh', qty:2, price:12990000},
+  {date:'01/08/2026', store:'TGD_TNI_TNI - 229 Cách Mạng Tháng 8', brand:'Samsung', segment:'7M-10M', product:'Samsung Galaxy A27 A276B 5G (8G+128G) Đen', qty:1, price:8990000},
+  {date:'01/08/2026', store:'TGD_TNI_TNI - 229 Cách Mạng Tháng 8', brand:'Motorola', segment:'3M-5M', product:'Motorola Moto G37 5G (4+128GB) Xám', qty:1, price:4890000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'iPhone', segment:'>=30M', product:'Điện thoại iPhone 17 Pro Max 256GB Deep Blue', qty:1, price:34590000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'iPhone', segment:'>=30M', product:'Điện thoại iPhone 17 Pro Max 256GB Silver', qty:3, price:34590000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'Samsung', segment:'7M-10M', product:'Samsung Galaxy A17 A176B 5G (8G+256GB) Xám', qty:1, price:7990000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'Samsung', segment:'7M-10M', product:'Samsung Galaxy A17 A176B 5G (8G+256GB) Xanh', qty:1, price:7990000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'Samsung', segment:'3M-5M', product:'Samsung Galaxy A07 A075F (4G+64GB) Đen', qty:1, price:3490000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'OPPO', segment:'7M-10M', product:'OPPO A6 Pro 8+256 Titanium', qty:1, price:9990000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'vivo', segment:'10M-15M', product:'vivo Y31d (8+128GB) đen', qty:1, price:10090000},
+  {date:'01/08/2026', store:'ĐML_TNI_HTH - 54 Hùng Vương', brand:'realme', segment:'10M-15M', product:'realme 16 5G 8-256GB Trắng', qty:1, price:11490000}
+];
+
+let TP_SEGMENTS = FALLBACK_TP;
+let CT_ROWS = FALLBACK_CT;
+let tpChartInstance = null, ctChartInstance = null;
+let ctSortState = {key:'date', dir:-1};
+let ctPage = 0;
+const CT_PAGE_SIZE = 40;
+
+function fmt(n){ return Math.round(n).toLocaleString('vi-VN'); }
+function fmtPct(n){ return (Math.round(n*1000)/10) + '%'; }
+function fmtMoney(n){ return fmt(n) + ' ₫'; }
+
+/* ============ TAB: THỊ PHẦN ============ */
+function renderThiPhan(){
+  const segSel = document.getElementById('segmentFilter');
+  const segNames = Object.keys(TP_SEGMENTS);
+  const curVal = segSel.value;
+  segSel.innerHTML = segNames.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(segNames.includes(curVal)) segSel.value = curVal;
+  const seg = segSel.value || segNames[0];
+  const rows = TP_SEGMENTS[seg] || [];
+
+  const brandTotals = BRANDS.map((b,i)=> rows.reduce((s,r)=>s+ (r.counts[i]||0), 0));
+  const grandTotal = brandTotals.reduce((a,b)=>a+b,0);
+  const topIdx = brandTotals.indexOf(Math.max(...brandTotals));
+
+  document.getElementById('tpStats').innerHTML = `
+    <div class="stat gold"><div class="label">Tổng máy bán (phân khúc)</div><div class="value">${fmt(grandTotal)} máy</div></div>
+    <div class="stat teal"><div class="label">Hãng dẫn đầu</div><div class="value">${BRANDS[topIdx]} · ${grandTotal? fmtPct(brandTotals[topIdx]/grandTotal):'0%'}</div></div>
+    <div class="stat"><div class="label">Số shop trong phân khúc</div><div class="value">${rows.length}</div></div>
+  `;
+
+  const ctx = document.getElementById('tpChart');
+  if(tpChartInstance) tpChartInstance.destroy();
+  tpChartInstance = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:BRANDS, datasets:[{ data:brandTotals, backgroundColor:BRANDS.map(b=>BRAND_COLORS[b]), borderRadius:4 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.y) + ' máy'}} },
+      scales:{
+        x:{ ticks:{color:'#8DA0B5'}, grid:{display:false} },
+        y:{ ticks:{color:'#8DA0B5'}, grid:{color:'rgba(255,255,255,0.06)'}, beginAtZero:true }
+      }
+    }
+  });
+
+  const head = document.getElementById('tpTableHead');
+  head.innerHTML = `<th>Shop</th>` + BRANDS.map(b=>`<th class="num">${b}</th>`).join('') + `<th class="num">Total</th>` + BRANDS.map(b=>`<th class="num">%${b}</th>`).join('');
+
+  const q = document.getElementById('shopSearchTP').value.trim().toLowerCase();
+  const filtered = rows.filter(r=> !q || r.shop.toLowerCase().includes(q));
+  const body = document.getElementById('tpTableBody');
+  if(filtered.length===0){
+    body.innerHTML = `<tr><td colspan="${BRANDS.length*2+2}"><div class="empty">Không có shop phù hợp.</div></td></tr>`;
+  } else {
+    body.innerHTML = filtered.map(r=>`
+      <tr>
+        <td>${r.shop}</td>
+        ${r.counts.map(c=>`<td class="num">${fmt(c)}</td>`).join('')}
+        <td class="num">${fmt(r.total)}</td>
+        ${r.pct.map(p=>`<td class="num">${fmtPct(p)}</td>`).join('')}
+      </tr>
+    `).join('');
+  }
+}
+document.getElementById('segmentFilter').addEventListener('change', renderThiPhan);
+document.getElementById('shopSearchTP').addEventListener('input', renderThiPhan);
+
+/* ============ TAB: CHI TIẾT NGÀY ============ */
+function renderChiTietFilters(){
+  const dates = [...new Set(CT_ROWS.map(r=>r.date))].sort();
+  const stores = [...new Set(CT_ROWS.map(r=>r.store))].sort();
+  const brands = [...new Set(CT_ROWS.map(r=>r.brand))].sort();
+  const segs = [...new Set(CT_ROWS.map(r=>r.segment))].sort();
+
+  const fill = (id, arr, label) => {
+    const el = document.getElementById(id);
+    const cur = el.value;
+    el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${v}">${v}</option>`).join('');
+    if(arr.includes(cur)) el.value = cur;
+  };
+  fill('dateFilterCT', dates, 'Tất cả ngày');
+  fill('storeFilterCT', stores, 'Tất cả siêu thị');
+  fill('brandFilterCT', brands, 'Tất cả hãng');
+  fill('segFilterCT', segs, 'Tất cả phân khúc giá');
+}
+
+function getFilteredCT(){
+  const q = document.getElementById('searchCT').value.trim().toLowerCase();
+  const d = document.getElementById('dateFilterCT').value;
+  const s = document.getElementById('storeFilterCT').value;
+  const b = document.getElementById('brandFilterCT').value;
+  const sg = document.getElementById('segFilterCT').value;
+  let rows = CT_ROWS.filter(r=>
+    (!q || r.product.toLowerCase().includes(q)) &&
+    (!d || r.date===d) && (!s || r.store===s) && (!b || r.brand===b) && (!sg || r.segment===sg)
+  );
+  rows = rows.slice().sort((a,b2)=>{
+    let av, bv;
+    if(ctSortState.key==='total'){ av=a.qty*a.price; bv=b2.qty*b2.price; }
+    else { av=a[ctSortState.key]; bv=b2[ctSortState.key]; }
+    if(typeof av === 'string') return av.localeCompare(bv)*ctSortState.dir;
+    return (av-bv)*ctSortState.dir;
+  });
+  return rows;
+}
+
+function renderChiTiet(){
+  renderChiTietFilters();
+  const rows = getFilteredCT();
+
+  const totalQty = rows.reduce((s,r)=>s+r.qty,0);
+  const totalRevenue = rows.reduce((s,r)=>s+r.qty*r.price,0);
+  document.getElementById('ctStats').innerHTML = `
+    <div class="stat teal"><div class="label">Tổng số lượng</div><div class="value">${fmt(totalQty)} máy</div></div>
+    <div class="stat gold"><div class="label">Tổng doanh thu</div><div class="value">${fmtMoney(totalRevenue)}</div></div>
+    <div class="stat"><div class="label">Số dòng giao dịch</div><div class="value">${fmt(rows.length)}</div></div>
+  `;
+
+  const byBrand = {};
+  rows.forEach(r=>{ byBrand[r.brand] = (byBrand[r.brand]||0) + r.qty; });
+  const brandLabels = Object.keys(byBrand);
+  const ctx = document.getElementById('ctChart');
+  if(ctChartInstance) ctChartInstance.destroy();
+  ctChartInstance = new Chart(ctx, {
+    type:'bar',
+    data:{ labels:brandLabels, datasets:[{ data:brandLabels.map(b=>byBrand[b]), backgroundColor: brandLabels.map(b=> BRAND_COLORS[b.toUpperCase()] || '#8DA0B5'), borderRadius:4 }] },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.x) + ' máy'}} },
+      scales:{
+        x:{ ticks:{color:'#8DA0B5'}, grid:{color:'rgba(255,255,255,0.06)'}, beginAtZero:true },
+        y:{ ticks:{color:'#8DA0B5'}, grid:{display:false} }
+      }
+    }
+  });
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / CT_PAGE_SIZE));
+  if(ctPage >= totalPages) ctPage = totalPages - 1;
+  const pageRows = rows.slice(ctPage*CT_PAGE_SIZE, ctPage*CT_PAGE_SIZE + CT_PAGE_SIZE);
+
+  const body = document.getElementById('ctTableBody');
+  if(pageRows.length===0){
+    body.innerHTML = `<tr><td colspan="8"><div class="empty">Không có giao dịch phù hợp với bộ lọc.</div></td></tr>`;
+  } else {
+    body.innerHTML = pageRows.map(r=>`
+      <tr>
+        <td>${r.date}</td>
+        <td>${r.store}</td>
+        <td>${r.brand}</td>
+        <td>${r.segment}</td>
+        <td>${r.product}</td>
+        <td class="num">${fmt(r.qty)}</td>
+        <td class="num">${fmtMoney(r.price)}</td>
+        <td class="num">${fmtMoney(r.qty*r.price)}</td>
+      </tr>
+    `).join('');
+  }
+  document.getElementById('pagerInfo').textContent = `Trang ${ctPage+1}/${totalPages} · ${rows.length} dòng`;
+  document.getElementById('prevPage').disabled = ctPage<=0;
+  document.getElementById('nextPage').disabled = ctPage>=totalPages-1;
+}
+
+['searchCT','dateFilterCT','storeFilterCT','brandFilterCT','segFilterCT'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{ ctPage=0; renderChiTiet(); });
+  document.getElementById(id).addEventListener('change', ()=>{ ctPage=0; renderChiTiet(); });
+});
+document.getElementById('prevPage').addEventListener('click', ()=>{ if(ctPage>0){ ctPage--; renderChiTiet(); } });
+document.getElementById('nextPage').addEventListener('click', ()=>{ ctPage++; renderChiTiet(); });
+document.querySelectorAll('#ctTable th').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(ctSortState.key===key){ ctSortState.dir*=-1; } else { ctSortState={key,dir:1}; }
+    ctPage=0; renderChiTiet();
+  });
+});
+
+/* ============ TABS ============ */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============ PARSERS ============ */
+function parseThiPhan(json){
+  const rows = json.table.rows;
+  const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
+  const segments = {};
+  let currentSeg = null;
+
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    const c0 = cell(r,0);
+    const c1 = cell(r,1);
+    if(!c0 || c0.v === null || c0.v === undefined || String(c0.v).trim()==='') continue;
+    const label = String(c0.v).trim();
+
+    if(c1 && typeof c1.v === 'number'){
+      if(!currentSeg) continue;
+      const counts = [];
+      for(let k=1;k<=7;k++){ const c = cell(r,k); counts.push(c && typeof c.v==='number' ? c.v : 0); }
+      const totalC = cell(r,8);
+      const total = totalC && typeof totalC.v==='number' ? totalC.v : counts.reduce((a,b)=>a+b,0);
+      const pct = [];
+      for(let k=9;k<=15;k++){ const c = cell(r,k); pct.push(c && typeof c.v==='number' ? c.v : 0); }
+      segments[currentSeg].push({shop:label, counts, total, pct});
+    } else {
+      currentSeg = label;
+      if(!segments[currentSeg]) segments[currentSeg] = [];
+    }
+  }
+  Object.keys(segments).forEach(k=>{ if(segments[k].length===0) delete segments[k]; });
+  if(Object.keys(segments).length===0) throw new Error('Không đọc được dữ liệu Thị Phần');
+  return segments;
+}
+
+function parseChiTiet(json){
+  const rows = json.table.rows;
+  const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
+  const out = [];
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    const c0 = cell(r,0), c2 = cell(r,2), c7 = cell(r,7), c8 = cell(r,8);
+    if(!c2 || !c2.v) continue;
+    if(!c7 || typeof c7.v !== 'number') continue;
+    out.push({
+      date: c0 ? (c0.f || String(c0.v||'')) : '',
+      storeCode: (cell(r,1) && cell(r,1).v!=null) ? String(cell(r,1).v) : '',
+      store: String(c2.v).trim(),
+      brand: (cell(r,3) && cell(r,3).v!=null) ? String(cell(r,3).v).trim() : '',
+      segment: (cell(r,4) && cell(r,4).v!=null) ? String(cell(r,4).v).trim() : '',
+      productCode: (cell(r,5) && cell(r,5).v!=null) ? String(cell(r,5).v) : '',
+      product: (cell(r,6) && cell(r,6).v!=null) ? String(cell(r,6).v).trim() : '',
+      qty: c7.v,
+      price: (c8 && typeof c8.v==='number') ? c8.v : 0
+    });
+  }
+  if(out.length===0) throw new Error('Không đọc được dữ liệu Chi Tiết Ngày');
+  return out;
+}
+
+/* ============ FETCH (JSONP) ============ */
+let jsonpCounter = 0;
+function fetchSheet(sheetName){
+  return new Promise((resolve, reject)=>{
+    const cbName = 'sheetCb_' + (jsonpCounter++);
+    const timeout = setTimeout(()=>{ cleanup(); reject(new Error('Hết thời gian chờ: ' + sheetName)); }, 15000);
+    function cleanup(){ clearTimeout(timeout); delete window[cbName]; if(script.parentNode) script.remove(); }
+    window[cbName] = function(json){
+      cleanup();
+      if(json.status === 'error'){ reject(new Error('Lỗi sheet "' + sheetName + '"')); return; }
+      resolve(json);
+    };
+    const script = document.createElement('script');
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json;responseHandler:${cbName}&t=${Date.now()}`;
+    script.src = url;
+    script.onerror = ()=>{ cleanup(); reject(new Error('Không thể kết nối sheet "' + sheetName + '"')); };
+    document.body.appendChild(script);
+  });
+}
+
+async function loadAll(){
+  document.getElementById('syncDot').classList.remove('off');
+  document.getElementById('syncText').textContent = 'Đang đồng bộ…';
+  try{
+    const [tpJson, ctJson] = await Promise.all([
+      fetchSheet('THỊ PHẦN'),
+      fetchSheet('CHI TIẾT NGÀY')
+    ]);
+    TP_SEGMENTS = parseThiPhan(tpJson);
+    CT_ROWS = parseChiTiet(ctJson);
+    document.getElementById('syncDot').classList.remove('off');
+    document.getElementById('syncText').textContent = 'Đã đồng bộ trực tiếp';
+    document.getElementById('footerNote').innerHTML =
+      `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
+  } catch(e){
+    document.getElementById('syncDot').classList.add('off');
+    document.getElementById('syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
+    document.getElementById('footerNote').innerHTML =
+      `${e.message}. Kiểm tra tên 2 tab trong Sheet có đúng là "THỊ PHẦN" và "CHI TIẾT NGÀY" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
+    TP_SEGMENTS = FALLBACK_TP;
+    CT_ROWS = FALLBACK_CT;
+  }
+  ctPage = 0;
+  renderThiPhan();
+  renderChiTiet();
+}
+
+renderThiPhan();
+renderChiTiet();
+loadAll();
+</script>
+</body>
+</html>
