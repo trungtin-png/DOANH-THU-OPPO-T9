@@ -54,6 +54,11 @@
   .progress-track{flex:1;height:6px;border-radius:3px;background:var(--panel-alt);overflow:hidden;}
   .progress-fill{height:100%;border-radius:3px;}
   .empty{padding:36px;text-align:center;color:var(--muted);font-size:13.5px;}
+  .group-header{background:var(--panel-alt);text-align:center !important;font-family:'Space Grotesk',sans-serif;font-size:12px;letter-spacing:0.02em;cursor:default !important;}
+  .group-header.total-group{color:var(--gold);}
+  .group-header.pct-group{color:var(--teal);}
+  tr.total-row{font-weight:700;background:var(--panel-alt);}
+  tr.total-row td{border-top:2px solid var(--border);}
 
   footer{margin-top:24px;font-size:12px;color:var(--muted);text-align:center;}
   footer a{color:var(--teal);}
@@ -76,7 +81,16 @@
 
   <div class="filters">
     <div class="fgroup"><span class="flabel">Phân khúc giá</span><select id="segmentFilter"></select></div>
-    <div class="fgroup"><span class="flabel">Hãng</span><select id="brandFilter"><option value="">Tất cả hãng</option></select></div>
+    <div class="fgroup"><span class="flabel">Hãng</span><select id="brandFilter">
+      <option value="">Tất cả hãng</option>
+      <option value="OPPO">OPPO</option>
+      <option value="SAMSUNG">SAMSUNG</option>
+      <option value="VIVO">VIVO</option>
+      <option value="REALME">REALME</option>
+      <option value="XIAOMI">XIAOMI</option>
+      <option value="IPHONE">IPHONE</option>
+      <option value="OTHER">OTHER</option>
+    </select></div>
     <div class="fgroup" style="flex:1;"><span class="flabel">Tên shop</span><input type="text" id="shopSearch" placeholder="Tìm theo tên shop..."></div>
   </div>
 
@@ -93,7 +107,7 @@
     <h2>Chi tiết theo shop</h2>
     <div style="overflow-x:auto;">
       <table class="data" id="dataTable">
-        <thead><tr id="tableHead"></tr></thead>
+        <thead id="tableHead"></thead>
         <tbody id="tableBody"></tbody>
       </table>
     </div>
@@ -109,7 +123,7 @@ const BRANDS = ['OPPO','SAMSUNG','VIVO','REALME','XIAOMI','IPHONE','OTHER'];
 const BRAND_COLORS = {OPPO:'#33B6A4', SAMSUNG:'#4C9BE8', VIVO:'#E4A73B', REALME:'#E2574C', XIAOMI:'#F2C744', IPHONE:'#8B7CD8', OTHER:'#8DA0B5'};
 
 const FALLBACK_TP = {
-  'TỔNG THỊ TRƯỜNG': [
+  'PHÂN KHÚC TỔNG': [
     {shop:'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[0,0,0,0,0,173,0], total:173, pct:[0,0,0,0,0,1,0]},
     {shop:'TGD_TNI_GDA - Phước Đông', counts:[40,47,12,11,20,24,14], total:168, pct:[0.24,0.28,0.07,0.07,0.12,0.14,0.08]},
     {shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', counts:[152,183,61,28,103,108,18], total:653, pct:[0.23,0.28,0.09,0.04,0.16,0.17,0.03]},
@@ -172,19 +186,37 @@ function render(){
       }
     });
 
-    document.getElementById('tableHead').innerHTML = `<th>Shop</th>` + BRANDS.map(b=>`<th class="num">${b}</th>`).join('') + `<th class="num">Total</th>` + BRANDS.map(b=>`<th class="num">%${b}</th>`).join('');
+    document.getElementById('tableHead').innerHTML = `
+      <tr>
+        <th rowspan="2" style="vertical-align:bottom;">Shop</th>
+        <th colspan="${BRANDS.length+1}" class="group-header total-group">TOTAL THÁNG</th>
+        <th colspan="${BRANDS.length}" class="group-header pct-group">% TOTAL THÁNG</th>
+      </tr>
+      <tr>
+        ${BRANDS.map(b=>`<th class="num" style="color:${BRAND_COLORS[b]}">${b}</th>`).join('')}
+        <th class="num">TOTAL</th>
+        ${BRANDS.map(b=>`<th class="num" style="color:${BRAND_COLORS[b]}">%${b}</th>`).join('')}
+      </tr>`;
     const body = document.getElementById('tableBody');
     if(rows.length===0){
       body.innerHTML = `<tr><td colspan="${BRANDS.length*2+2}"><div class="empty">Không có shop phù hợp.</div></td></tr>`;
     } else {
-      body.innerHTML = rows.map(r=>`
+      let html = rows.map(r=>`
         <tr>
           <td>${r.shop}</td>
-          ${r.counts.map(c=>`<td class="num">${fmt(c)}</td>`).join('')}
+          ${r.counts.map((c,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(c)}</td>`).join('')}
           <td class="num">${fmt(r.total)}</td>
-          ${r.pct.map(p=>`<td class="num">${fmtPct(p)}</td>`).join('')}
+          ${r.pct.map((p,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmtPct(p)}</td>`).join('')}
         </tr>
       `).join('');
+      html += `
+        <tr class="total-row">
+          <td>TỔNG</td>
+          ${brandTotals.map((v,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(v)}</td>`).join('')}
+          <td class="num">${fmt(grandTotal)}</td>
+          ${brandTotals.map(v=>`<td class="num">${grandTotal? fmtPct(v/grandTotal):'0%'}</td>`).join('')}
+        </tr>`;
+      body.innerHTML = html;
     }
 
   } else {
@@ -220,15 +252,20 @@ function render(){
       }
     });
 
-    document.getElementById('tableHead').innerHTML = `<th>Shop</th><th class="num">Số lượng ${brand}</th><th>% thị phần ${brand}</th><th class="num">Tổng máy bán (shop)</th>`;
+    document.getElementById('tableHead').innerHTML = `<tr>
+      <th>Shop</th>
+      <th class="num" style="color:${BRAND_COLORS[brand]}">Số lượng ${brand}</th>
+      <th style="color:${BRAND_COLORS[brand]}">% thị phần ${brand}</th>
+      <th class="num">Tổng máy bán (shop)</th>
+    </tr>`;
     const body = document.getElementById('tableBody');
     if(enriched.length===0){
       body.innerHTML = `<tr><td colspan="4"><div class="empty">Không có shop phù hợp.</div></td></tr>`;
     } else {
-      body.innerHTML = enriched.map(r=>`
+      let html = enriched.map(r=>`
         <tr>
           <td>${r.shop}</td>
-          <td class="num">${fmt(r.count)}</td>
+          <td class="num" style="color:${BRAND_COLORS[brand]}">${fmt(r.count)}</td>
           <td>
             <div class="progress-cell">
               <div class="progress-track"><div class="progress-fill" style="width:${Math.min(r.pct*100,100)}%;background:${BRAND_COLORS[brand]}"></div></div>
@@ -238,6 +275,14 @@ function render(){
           <td class="num">${fmt(r.total)}</td>
         </tr>
       `).join('');
+      html += `
+        <tr class="total-row">
+          <td>TỔNG</td>
+          <td class="num" style="color:${BRAND_COLORS[brand]}">${fmt(brandTotal)}</td>
+          <td style="color:${BRAND_COLORS[brand]}">${marketTotal? fmtPct(brandTotal/marketTotal):'0%'}</td>
+          <td class="num">${fmt(marketTotal)}</td>
+        </tr>`;
+      body.innerHTML = html;
     }
   }
 }
@@ -268,10 +313,11 @@ function parseThiPhan(json){
       const pct = [];
       for(let k=9;k<=15;k++){ const c = cell(r,k); pct.push(c && typeof c.v==='number' ? c.v : 0); }
       segments[currentSeg].push({shop:label, counts, total, pct});
-    } else {
+    } else if(!c1 || c1.v === null || c1.v === undefined || c1.v === ''){
       currentSeg = label;
       if(!segments[currentSeg]) segments[currentSeg] = [];
     }
+    // else: dòng tiêu đề cột (vd "Shop Name", "OPPO"...) — bỏ qua, không đổi currentSeg
   }
   Object.keys(segments).forEach(k=>{ if(segments[k].length===0) delete segments[k]; });
   if(Object.keys(segments).length===0) throw new Error('Không đọc được dữ liệu Thị Phần');
