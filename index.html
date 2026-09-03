@@ -7,11 +7,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+  // Nếu CDN chính lỗi (mạng chặn/timeout), tự chuyển sang CDN dự phòng để biểu đồ vẫn có cơ hội hiển thị.
+  if (typeof Chart === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');
+  }
+</script>
+<script>
+  if (typeof Chart === 'undefined') {
+    document.write('<script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');
+  }
+</script>
 <style>
 
   :root{
-    --bg:#0E1826; --panel:#142235; --panel-alt:#182A42; --border:rgba(255,255,255,0.08);
-    --gold:#E4A73B; --teal:#33B6A4; --red:#E2574C; --text:#EAF0F6; --muted:#8DA0B5;
+    --bg:#F3F5F9; --panel:#FFFFFF; --panel-alt:#EEF2F7; --border:#E1E7EF;
+    --gold:#B45309; --teal:#0F9488; --red:#DC2626; --text:#1E293B; --muted:#64748B;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;}
@@ -67,16 +78,16 @@
 
 
   :root{
-    --bg:#0E1826;
-    --panel:#142235;
-    --panel-alt:#182A42;
-    --border:rgba(255,255,255,0.08);
-    --gold:#E4A73B;
-    --gold-dim:#8A6A2E;
-    --teal:#33B6A4;
-    --red:#E2574C;
-    --text:#EAF0F6;
-    --muted:#8DA0B5;
+    --bg:#F3F5F9;
+    --panel:#FFFFFF;
+    --panel-alt:#EEF2F7;
+    --border:#E1E7EF;
+    --gold:#B45309;
+    --gold-dim:#F3E3C9;
+    --teal:#0F9488;
+    --red:#DC2626;
+    --text:#1E293B;
+    --muted:#64748B;
   }
   *{box-sizing:border-box;}
   body{
@@ -163,8 +174,8 @@
 
 
   :root{
-    --bg:#0E1826; --panel:#142235; --panel-alt:#182A42; --border:rgba(255,255,255,0.08);
-    --gold:#E4A73B; --teal:#33B6A4; --red:#E2574C; --text:#EAF0F6; --muted:#8DA0B5;
+    --bg:#F3F5F9; --panel:#FFFFFF; --panel-alt:#EEF2F7; --border:#E1E7EF;
+    --gold:#B45309; --teal:#0F9488; --red:#DC2626; --text:#1E293B; --muted:#64748B;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;}
@@ -241,11 +252,29 @@
   padding:8px 14px; border-radius:8px; cursor:pointer;
 }
 .tab-btn:hover{color:var(--text); background:var(--panel-alt);}
-.tab-btn.active{color:var(--bg); background:var(--teal); font-weight:600;}
+.tab-btn.active{color:#FFFFFF; background:var(--teal); font-weight:600;}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
 @media(max-width:700px){
   .topbar{flex-direction:column; align-items:flex-start; gap:12px;}
+}
+
+/* ==== Highlight shop thua đối thủ (nền đỏ nhạt + badge) ==== */
+tr.row-lose{ background: rgba(220,38,38,0.08); }
+tr.row-lose:hover{ background: rgba(220,38,38,0.14); }
+tr.row-lose td:first-child{ border-left:3px solid var(--red); }
+.lose-badge{
+  display:inline-block; margin-left:8px; padding:2px 8px; border-radius:6px;
+  background:var(--red); color:#fff; font-size:10.5px; font-weight:700;
+  letter-spacing:0.01em; white-space:nowrap; vertical-align:middle;
+}
+
+/* ==== Nền sáng: thêm bóng đổ nhẹ cho card/bảng để chuyên nghiệp & dễ nhìn ==== */
+.panel, .stat, .syncbox, table.data{
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 14px rgba(15,23,42,0.05);
+}
+.filters select, .filters input{
+  box-shadow: 0 1px 2px rgba(15,23,42,0.03);
 }
 </style>
 </head>
@@ -255,6 +284,7 @@
   <div class="brand">OPPO Dashboard</div>
   <nav class="tabs">
     <button class="tab-btn active" data-tab="tp">Thị phần</button>
+    <button class="tab-btn" data-tab="sb">Số bán ngày mới</button>
     <button class="tab-btn" data-tab="dt">Tiến độ doanh thu</button>
     <button class="tab-btn" data-tab="cn">Chi tiết ngày</button>
   </nav>
@@ -301,6 +331,10 @@
 
   <div class="panel">
     <h2>Chi tiết theo shop</h2>
+    <p style="margin:-10px 0 14px;font-size:12.5px;color:var(--muted);">
+      <span class="lose-badge" style="margin-left:0;">Thua đối thủ</span>
+      &nbsp;= shop có ít nhất 1 hãng khác bán nhiều hơn OPPO (chỉ áp dụng khi xem "Tất cả hãng").
+    </p>
     <div style="overflow-x:auto;">
       <table class="data" id="TP_dataTable">
         <thead id="TP_tableHead"></thead>
@@ -310,6 +344,52 @@
   </div>
 
   <footer id="TP_footerNote">Nguồn: Google Sheet "DOANH THU OPPO" — sheet THỊ PHẦN</footer>
+</div>
+</section>
+
+<section class="tab-panel" id="tab-sb">
+<div class="wrap">
+
+  <header>
+    <div class="titleblock">
+      <h1>Số bán ngày mới</h1>
+      <p>OPPO · số lượng bán theo shop và hãng — cập nhật theo ngày mới nhất</p>
+    </div>
+    <div class="syncbox">
+      <span class="dot" id="SB_syncDot"></span>
+      <span id="SB_syncText">Đang đồng bộ…</span>
+      <button id="SB_refreshBtn" onclick="SB_loadData()">Làm mới</button>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="fgroup" style="flex:1;"><span class="flabel">Tên shop</span><input type="text" id="SB_shopSearch" placeholder="Tìm theo tên shop..."></div>
+  </div>
+
+  <div class="stats" id="SB_statsRow"></div>
+
+  <div class="panel">
+    <h2>Tổng số lượng bán theo hãng</h2>
+    <div style="position:relative;height:360px;">
+      <canvas id="SB_mainChart" role="img" aria-label="Biểu đồ số lượng bán theo hãng"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Chi tiết theo shop</h2>
+    <p style="margin:-10px 0 14px;font-size:12.5px;color:var(--muted);">
+      <span class="lose-badge" style="margin-left:0;">Thua đối thủ</span>
+      &nbsp;= shop có ít nhất 1 hãng khác bán nhiều hơn OPPO trên 1 đơn vị tại shop đó.
+    </p>
+    <div style="overflow-x:auto;">
+      <table class="data" id="SB_dataTable">
+        <thead id="SB_tableHead"></thead>
+        <tbody id="SB_tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer id="SB_footerNote">Nguồn: Google Sheet "DOANH THU OPPO" — sheet SỐ BÁN NGÀY MỚI</footer>
 </div>
 </section>
 
@@ -443,7 +523,7 @@
 <script>
 // ==== Chuyển tab ====
 (function(){
-  const REFRESH = { tp:'TP_refresh', dt:'DT_refresh', cn:'CN_refresh' };
+  const REFRESH = { tp:'TP_refresh', sb:'SB_refresh', dt:'DT_refresh', cn:'CN_refresh' };
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const tab = btn.dataset.tab;
@@ -464,22 +544,22 @@
 const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
 const SHEET_NAME = 'THỊ PHẦN';
 const BRANDS = ['OPPO','SAMSUNG','VIVO','REALME','XIAOMI','IPHONE','OTHER'];
-const BRAND_COLORS = {OPPO:'#33B6A4', SAMSUNG:'#4C9BE8', VIVO:'#E4A73B', REALME:'#E2574C', XIAOMI:'#F2C744', IPHONE:'#8B7CD8', OTHER:'#8DA0B5'};
+const BRAND_COLORS = {OPPO:'#0F9D8B', SAMSUNG:'#2563EB', VIVO:'#7C3AED', REALME:'#F97316', XIAOMI:'#CA8A04', IPHONE:'#334155', OTHER:'#94A3B8'};
 
 const FALLBACK_TP = {
   'PHÂN KHÚC TỔNG': [
-    {shop:'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[0,0,0,0,0,173,0], total:173, pct:[0,0,0,0,0,1,0]},
-    {shop:'TGD_TNI_GDA - Phước Đông', counts:[40,47,12,11,20,24,14], total:168, pct:[0.24,0.28,0.07,0.07,0.12,0.14,0.08]},
-    {shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', counts:[152,183,61,28,103,108,18], total:653, pct:[0.23,0.28,0.09,0.04,0.16,0.17,0.03]},
-    {shop:'TGD_TNI_TBA - 180 Quốc Lộ 22', counts:[29,25,6,4,17,18,5], total:104, pct:[0.28,0.24,0.06,0.04,0.16,0.17,0.05]},
-    {shop:'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)', counts:[22,33,6,11,12,26,28], total:138, pct:[0.16,0.24,0.04,0.08,0.09,0.19,0.20]},
-    {shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[25,85,11,12,75,0,6], total:214, pct:[0.12,0.40,0.05,0.06,0.35,0,0.03]},
-    {shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', counts:[57,68,11,13,79,34,14], total:276, pct:[0.21,0.25,0.04,0.05,0.29,0.12,0.05]},
-    {shop:'ĐMM_TNI_GDA - Phước Đức B (Phước Đông)', counts:[14,16,15,16,22,25,3], total:111, pct:[0.13,0.14,0.14,0.14,0.20,0.23,0.03]},
-    {shop:'ĐMM_TNI_TBA - An Tịnh', counts:[25,20,13,3,24,8,4], total:97, pct:[0.26,0.21,0.13,0.03,0.25,0.08,0.04]},
-    {shop:'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)', counts:[9,16,11,2,12,8,8], total:66, pct:[0.14,0.24,0.17,0.03,0.18,0.12,0.12]},
-    {shop:'ĐMS_TNI_TBA - 387 ĐT787B', counts:[12,14,4,0,9,1,0], total:40, pct:[0.30,0.35,0.10,0,0.23,0.03,0]},
-    {shop:'ĐMS_TNI_TBA - An Hòa', counts:[29,18,14,20,11,19,2], total:113, pct:[0.26,0.16,0.12,0.18,0.10,0.17,0.02]}
+    {shop:'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[0,0,0,0,0,22,0], total:22, pct:[0,0,0,0,0,1.00,0]},
+    {shop:'TGD_TNI_GDA - Phước Đông', counts:[5,1,2,1,5,1,0], total:15, pct:[0.33,0.07,0.13,0.07,0.33,0.07,0]},
+    {shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', counts:[23,16,5,0,20,13,2], total:79, pct:[0.29,0.20,0.06,0,0.25,0.16,0.03]},
+    {shop:'TGD_TNI_TBA - 180 Quốc Lộ 22', counts:[1,1,0,2,0,4,1], total:9, pct:[0.11,0.11,0,0.22,0,0.44,0.11]},
+    {shop:'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)', counts:[1,8,0,2,3,2,4], total:20, pct:[0.05,0.40,0,0.10,0.15,0.10,0.20]},
+    {shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[2,8,1,1,12,0,1], total:25, pct:[0.08,0.32,0.04,0.04,0.48,0,0.04]},
+    {shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', counts:[8,6,2,0,10,9,0], total:35, pct:[0.23,0.17,0.06,0,0.29,0.26,0]},
+    {shop:'ĐMM_TNI_GDA - Phước Đức B (Phước Đông)', counts:[2,0,5,2,1,7,1], total:18, pct:[0.11,0,0.28,0.11,0.06,0.39,0.06]},
+    {shop:'ĐMM_TNI_TBA - An Tịnh', counts:[2,0,1,2,3,1,3], total:12, pct:[0.17,0,0.08,0.17,0.25,0.08,0.25]},
+    {shop:'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)', counts:[1,1,1,0,1,0,1], total:5, pct:[0.20,0.20,0.20,0,0.20,0,0.20]},
+    {shop:'ĐMS_TNI_TBA - 387 ĐT787B', counts:[3,3,0,0,4,0,0], total:10, pct:[0.30,0.30,0,0,0.40,0,0]},
+    {shop:'ĐMS_TNI_TBA - An Hòa', counts:[0,2,1,0,3,2,0], total:8, pct:[0,0.25,0.13,0,0.38,0.25,0]}
   ],
   '>=30M': [
     {shop:'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[0,2,0,0,0,7,0], total:9, pct:[0.0,0.22,0.0,0.0,0.0,0.78,0.0]},
@@ -617,16 +697,18 @@ function render(){
     `;
 
     document.getElementById('TP_chartTitle').textContent = 'Tổng số máy bán theo hãng — ' + seg;
-    if(chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(document.getElementById('TP_mainChart'), {
-      type:'bar',
-      data:{ labels:BRANDS, datasets:[{ data:brandTotals, backgroundColor:BRANDS.map(b=>BRAND_COLORS[b]), borderRadius:4 }] },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.y) + ' máy'}} },
-        scales:{ x:{ ticks:{color:'#8DA0B5'}, grid:{display:false} }, y:{ ticks:{color:'#8DA0B5'}, grid:{color:'rgba(255,255,255,0.06)'}, beginAtZero:true } }
-      }
-    });
+    try{
+      if(chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(document.getElementById('TP_mainChart'), {
+        type:'bar',
+        data:{ labels:BRANDS, datasets:[{ data:brandTotals, backgroundColor:BRANDS.map(b=>BRAND_COLORS[b]), borderRadius:4 }] },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.y) + ' máy'}} },
+          scales:{ x:{ ticks:{color:'#64748B'}, grid:{display:false} }, y:{ ticks:{color:'#64748B'}, grid:{color:'rgba(15,23,42,0.08)'}, beginAtZero:true } }
+        }
+      });
+    }catch(chartErr){ console.error('Không vẽ được biểu đồ:', chartErr); const cv=document.getElementById('TP_mainChart'); if(cv&&cv.parentElement) cv.parentElement.innerHTML='<div class="empty">Không tải được thư viện biểu đồ (kiểm tra kết nối mạng). Số liệu bảng bên dưới vẫn đầy đủ.</div>'; }
 
     document.getElementById('TP_tableHead').innerHTML = `
       <tr>
@@ -643,14 +725,18 @@ function render(){
     if(rows.length===0){
       body.innerHTML = `<tr><td colspan="${BRANDS.length*2+2}"><div class="empty">Không có shop phù hợp.</div></td></tr>`;
     } else {
-      let html = rows.map(r=>`
-        <tr>
-          <td>${r.shop}</td>
+      let html = rows.map(r=>{
+        const oppoCount = r.counts[0]||0;
+        const rivalMax = Math.max(0, ...r.counts.slice(1));
+        const losing = rivalMax > oppoCount; // OPPO bị 1 hãng đối thủ vượt số bán
+        return `
+        <tr class="${losing ? 'row-lose' : ''}">
+          <td>${r.shop}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ tại shop này">Thua đối thủ</span>' : ''}</td>
           ${r.counts.map((c,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(c)}</td>`).join('')}
           <td class="num">${fmt(r.total)}</td>
           ${r.pct.map((p,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmtPct(p)}</td>`).join('')}
         </tr>
-      `).join('');
+      `;}).join('');
       html += `
         <tr class="total-row">
           <td>TỔNG</td>
@@ -677,22 +763,24 @@ function render(){
     `;
 
     document.getElementById('TP_chartTitle').textContent = `Thị phần ${brand} theo shop — ${seg}`;
-    if(chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(document.getElementById('TP_mainChart'), {
-      type:'bar',
-      data:{
-        labels: enriched.map(r=>r.shop),
-        datasets:[{ data: enriched.map(r=>Math.round(r.pct*1000)/10), backgroundColor: BRAND_COLORS[brand] || '#33B6A4', borderRadius:4, maxBarThickness:18 }]
-      },
-      options:{
-        indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> c.parsed.x + '%'}} },
-        scales:{
-          x:{ min:0, ticks:{color:'#8DA0B5', callback:(v)=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'} },
-          y:{ ticks:{color:'#8DA0B5'}, grid:{display:false} }
+    try{
+      if(chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(document.getElementById('TP_mainChart'), {
+        type:'bar',
+        data:{
+          labels: enriched.map(r=>r.shop),
+          datasets:[{ data: enriched.map(r=>Math.round(r.pct*1000)/10), backgroundColor: BRAND_COLORS[brand] || '#0F9D8B', borderRadius:4, maxBarThickness:18 }]
+        },
+        options:{
+          indexAxis:'y', responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> c.parsed.x + '%'}} },
+          scales:{
+            x:{ min:0, ticks:{color:'#64748B', callback:(v)=>v+'%'}, grid:{color:'rgba(15,23,42,0.08)'} },
+            y:{ ticks:{color:'#64748B'}, grid:{display:false} }
+          }
         }
-      }
-    });
+      });
+    }catch(chartErr){ console.error('Không vẽ được biểu đồ:', chartErr); const cv=document.getElementById('TP_mainChart'); if(cv&&cv.parentElement) cv.parentElement.innerHTML='<div class="empty">Không tải được thư viện biểu đồ (kiểm tra kết nối mạng). Số liệu bảng bên dưới vẫn đầy đủ.</div>'; }
 
     document.getElementById('TP_tableHead').innerHTML = `<tr>
       <th>Shop</th>
@@ -755,11 +843,18 @@ function parseThiPhan(json){
       const pct = [];
       for(let k=9;k<=15;k++){ const c = cell(r,k); pct.push(c && typeof c.v==='number' ? c.v : 0); }
       segments[currentSeg].push({shop:label, counts, total, pct});
-    } else if(!c1 || c1.v === null || c1.v === undefined || c1.v === ''){
-      currentSeg = label;
-      if(!segments[currentSeg]) segments[currentSeg] = [];
+    } else {
+      // Không phải hàng dữ liệu (c1 không phải số). Đây là hàng tiêu đề — nhưng có 2 loại:
+      // 1) Hàng tên cột thật sự (vd c1 = "OPPO", "SAMSUNG"...) -> bỏ qua, giữ nguyên currentSeg
+      // 2) Hàng tiêu đề phân khúc mới (c1 rỗng, hoặc chứa chữ khác như "TOTAL THÁNG" do merge cell) -> bắt đầu phân khúc mới
+      const c1val = c1 && c1.v !== null && c1.v !== undefined ? String(c1.v).trim().toUpperCase() : '';
+      if(BRANDS.includes(c1val)){
+        // dòng tiêu đề cột (OPPO, SAMSUNG,...) — bỏ qua, không đổi currentSeg
+      } else {
+        currentSeg = label;
+        if(!segments[currentSeg]) segments[currentSeg] = [];
+      }
     }
-    // else: dòng tiêu đề cột (vd "Shop Name", "OPPO"...) — bỏ qua, không đổi currentSeg
   }
   Object.keys(segments).forEach(k=>{ if(segments[k].length===0) delete segments[k]; });
   if(Object.keys(segments).length===0) throw new Error('Không đọc được dữ liệu Thị Phần');
@@ -808,6 +903,180 @@ function handleFail(msg){
 
 window.TP_loadData = loadData;
 window.TP_refresh = render;
+render();
+loadData();
+
+})();
+</script>
+
+<script>
+(function(){
+
+const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
+const SHEET_NAME = 'SỐ BÁN NGÀY MỚI';
+const BRANDS = ['OPPO','SAMSUNG','VIVO','REALME','XIAOMI','IPHONE','OTHER'];
+const BRAND_COLORS = {OPPO:'#0F9D8B', SAMSUNG:'#2563EB', VIVO:'#7C3AED', REALME:'#F97316', XIAOMI:'#CA8A04', IPHONE:'#334155', OTHER:'#94A3B8'};
+
+const FALLBACK_SB = [
+  {shop:'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[0,0,0,0,0,13,0], total:13, pct:[0,0,0,0,0,1,0]},
+  {shop:'TGD_TNI_GDA - Phước Đông', counts:[2,1,1,0,1,0,0], total:5, pct:[0.40,0.20,0.20,0,0.20,0,0]},
+  {shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', counts:[12,11,4,0,12,8,1], total:48, pct:[0.25,0.23,0.08,0,0.25,0.17,0.02]},
+  {shop:'TGD_TNI_TBA - 180 Quốc Lộ 22', counts:[1,0,0,1,0,2,0], total:4, pct:[0.25,0,0,0.25,0,0.50,0]},
+  {shop:'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)', counts:[1,7,0,2,1,1,1], total:13, pct:[0.08,0.54,0,0.15,0.08,0.08,0.08]},
+  {shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', counts:[1,7,1,0,6,0,0], total:15, pct:[0.07,0.47,0.07,0,0.40,0,0]},
+  {shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', counts:[7,4,1,0,8,5,0], total:25, pct:[0.28,0.16,0.04,0,0.32,0.20,0]},
+  {shop:'ĐMM_TNI_GDA - Phước Đức B (Phước Đông)', counts:[2,0,2,1,2,7,1], total:15, pct:[0.13,0,0.13,0.07,0.13,0.47,0.07]},
+  {shop:'ĐMM_TNI_TBA - An Tịnh', counts:[2,0,1,0,2,0,3], total:8, pct:[0.25,0,0.13,0,0.25,0,0.38]},
+  {shop:'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)', counts:[1,0,1,0,1,0,0], total:3, pct:[0.33,0,0.33,0,0.33,0,0]},
+  {shop:'ĐMS_TNI_TBA - 387 ĐT787B', counts:[2,1,0,0,1,0,0], total:4, pct:[0.50,0.25,0,0,0.25,0,0]},
+  {shop:'ĐMS_TNI_TBA - An Hòa', counts:[0,2,1,0,2,2,0], total:7, pct:[0,0.29,0.14,0,0.29,0.29,0]}
+];
+
+let SB_ROWS = FALLBACK_SB;
+let SB_chartInstance = null;
+
+function fmt(n){ return Math.round(n).toLocaleString('vi-VN'); }
+function fmtPct(n){ return (Math.round(n*1000)/10) + '%'; }
+
+function render(){
+  const q = document.getElementById('SB_shopSearch').value.trim().toLowerCase();
+  const rows = SB_ROWS.filter(r=> !q || r.shop.toLowerCase().includes(q));
+
+  const brandTotals = BRANDS.map((b,i)=> rows.reduce((s,r)=>s+(r.counts[i]||0),0));
+  const grandTotal = brandTotals.reduce((a,b)=>a+b,0);
+  const topIdx = brandTotals.indexOf(Math.max(...brandTotals));
+  const losingCount = rows.filter(r=>{
+    const oppoCount = r.counts[0]||0;
+    const rivalMax = Math.max(0, ...r.counts.slice(1));
+    return (rivalMax - oppoCount) > 1;
+  }).length;
+
+  document.getElementById('SB_statsRow').innerHTML = `
+    <div class="stat gold"><div class="label">Tổng số lượng bán</div><div class="value">${fmt(grandTotal)} máy</div></div>
+    <div class="stat teal"><div class="label">Hãng dẫn đầu</div><div class="value">${grandTotal? BRANDS[topIdx]+' · '+fmtPct(brandTotals[topIdx]/grandTotal) : '—'}</div></div>
+    <div class="stat"><div class="label">Shop thua đối thủ (&gt;1 đơn vị)</div><div class="value" style="color:${losingCount>0?'#DC2626':'inherit'}">${losingCount} / ${rows.length}</div></div>
+  `;
+
+  try{
+    if(SB_chartInstance) SB_chartInstance.destroy();
+    SB_chartInstance = new Chart(document.getElementById('SB_mainChart'), {
+      type:'bar',
+      data:{ labels:BRANDS, datasets:[{ data:brandTotals, backgroundColor:BRANDS.map(b=>BRAND_COLORS[b]), borderRadius:4 }] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.y) + ' máy'}} },
+        scales:{ x:{ ticks:{color:'#64748B'}, grid:{display:false} }, y:{ ticks:{color:'#64748B'}, grid:{color:'rgba(15,23,42,0.08)'}, beginAtZero:true } }
+      }
+    });
+  }catch(chartErr){ console.error('Không vẽ được biểu đồ:', chartErr); const cv=document.getElementById('SB_mainChart'); if(cv&&cv.parentElement) cv.parentElement.innerHTML='<div class="empty">Không tải được thư viện biểu đồ (kiểm tra kết nối mạng). Số liệu bảng bên dưới vẫn đầy đủ.</div>'; }
+
+  document.getElementById('SB_tableHead').innerHTML = `
+    <tr>
+      <th rowspan="2" style="vertical-align:bottom;">Shop</th>
+      <th colspan="${BRANDS.length+1}" class="group-header total-group">TOTAL</th>
+      <th colspan="${BRANDS.length}" class="group-header pct-group">% TOTAL</th>
+    </tr>
+    <tr>
+      ${BRANDS.map(b=>`<th class="num" style="color:${BRAND_COLORS[b]}">${b}</th>`).join('')}
+      <th class="num">TOTAL</th>
+      ${BRANDS.map(b=>`<th class="num" style="color:${BRAND_COLORS[b]}">%${b}</th>`).join('')}
+    </tr>`;
+  const body = document.getElementById('SB_tableBody');
+  if(rows.length===0){
+    body.innerHTML = `<tr><td colspan="${BRANDS.length*2+2}"><div class="empty">Không có shop phù hợp.</div></td></tr>`;
+  } else {
+    let html = rows.map(r=>{
+      const oppoCount = r.counts[0]||0;
+      const rivalMax = Math.max(0, ...r.counts.slice(1));
+      const losing = (rivalMax - oppoCount) > 1;
+      return `
+      <tr class="${losing ? 'row-lose' : ''}">
+        <td>${r.shop}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ trên 1 đơn vị tại shop này">Thua đối thủ</span>' : ''}</td>
+        ${r.counts.map((c,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(c)}</td>`).join('')}
+        <td class="num">${fmt(r.total)}</td>
+        ${r.pct.map((p,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmtPct(p)}</td>`).join('')}
+      </tr>
+    `;}).join('');
+    html += `
+      <tr class="total-row">
+        <td>TỔNG</td>
+        ${brandTotals.map((v,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(v)}</td>`).join('')}
+        <td class="num">${fmt(grandTotal)}</td>
+        ${brandTotals.map(v=>`<td class="num">${grandTotal? fmtPct(v/grandTotal):'0%'}</td>`).join('')}
+      </tr>`;
+    body.innerHTML = html;
+  }
+}
+
+document.getElementById('SB_shopSearch').addEventListener('input', render);
+
+function parseSoBanNgay(json){
+  const rows = json.table.rows;
+  const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
+  const out = [];
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    const c0 = cell(r,0);
+    const c1 = cell(r,1);
+    if(!c0 || c0.v === null || c0.v === undefined || String(c0.v).trim()==='') continue;
+    const label = String(c0.v).trim();
+    if(c1 && typeof c1.v === 'number'){
+      const counts = [];
+      for(let k=1;k<=7;k++){ const c = cell(r,k); counts.push(c && typeof c.v==='number' ? c.v : 0); }
+      const totalC = cell(r,8);
+      const total = totalC && typeof totalC.v==='number' ? totalC.v : counts.reduce((a,b)=>a+b,0);
+      const pct = [];
+      for(let k=9;k<=15;k++){ const c = cell(r,k); pct.push(c && typeof c.v==='number' ? c.v : 0); }
+      out.push({shop:label, counts, total, pct});
+    }
+    // else: dòng tiêu đề (SHOP / OPPO / SAMSUNG...) — bỏ qua
+  }
+  if(out.length===0) throw new Error('Không đọc được dữ liệu SỐ BÁN NGÀY MỚI');
+  return out;
+}
+
+let SB_jsonpCounter = 0;
+function loadData(){
+  document.getElementById('SB_syncDot').classList.remove('off');
+  document.getElementById('SB_syncText').textContent = 'Đang đồng bộ…';
+
+  const cbName = 'sheetCb_sb_' + (SB_jsonpCounter++);
+  const timeout = setTimeout(()=>{ handleFail('Hết thời gian chờ phản hồi từ Google Sheet.'); }, 15000);
+
+  window[cbName] = function(json){
+    clearTimeout(timeout);
+    try{
+      if(json.status === 'error') throw new Error('Sheet trả về lỗi — kiểm tra quyền chia sẻ.');
+      SB_ROWS = parseSoBanNgay(json);
+      document.getElementById('SB_syncDot').classList.remove('off');
+      document.getElementById('SB_syncText').textContent = 'Đã đồng bộ trực tiếp';
+      document.getElementById('SB_footerNote').innerHTML =
+        `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
+      render();
+    }catch(e){
+      handleFail(e.message);
+    }
+    delete window[cbName];
+    script.remove();
+  };
+
+  const script = document.createElement('script');
+  script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&tqx=out:json;responseHandler:${cbName}&t=${Date.now()}`;
+  script.onerror = ()=>{ clearTimeout(timeout); handleFail('Không thể kết nối tới Google Sheet.'); };
+  document.body.appendChild(script);
+}
+
+function handleFail(msg){
+  document.getElementById('SB_syncDot').classList.add('off');
+  document.getElementById('SB_syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
+  document.getElementById('SB_footerNote').innerHTML =
+    `${msg} Kiểm tra tên tab trong Sheet có đúng là "SỐ BÁN NGÀY MỚI" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
+  SB_ROWS = FALLBACK_SB;
+  render();
+}
+
+window.SB_loadData = loadData;
+window.SB_refresh = render;
 render();
 loadData();
 
@@ -935,23 +1204,25 @@ function renderChart(){
     }]
   };
   if(chartInstance){ chartInstance.destroy(); }
-  chartInstance = new Chart(ctx, {
-    type:'bar',
-    data,
-    options:{
-      indexAxis:'y',
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{callbacks:{label:(c)=>c.parsed.x + '%'}}
-      },
-      scales:{
-        x:{ min:0, max:100, ticks:{color:'#8DA0B5', callback:(v)=>v+'%'}, grid:{color:'rgba(255,255,255,0.06)'} },
-        y:{ ticks:{color:'#8DA0B5'}, grid:{display:false} }
+  try{
+    chartInstance = new Chart(ctx, {
+      type:'bar',
+      data,
+      options:{
+        indexAxis:'y',
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:(c)=>c.parsed.x + '%'}}
+        },
+        scales:{
+          x:{ min:0, max:100, ticks:{color:'#64748B', callback:(v)=>v+'%'}, grid:{color:'rgba(15,23,42,0.08)'} },
+          y:{ ticks:{color:'#64748B'}, grid:{display:false} }
+        }
       }
-    }
-  });
+    });
+  }catch(chartErr){ console.error('Không vẽ được biểu đồ:', chartErr); const cv=document.getElementById('DT_rankChart'); if(cv&&cv.parentElement) cv.parentElement.innerHTML='<div class="empty">Không tải được thư viện biểu đồ (kiểm tra kết nối mạng). Bảng số liệu ở trên vẫn đầy đủ.</div>'; }
 }
 
 document.getElementById('DT_searchInput').addEventListener('input', renderTable);
@@ -1189,26 +1460,28 @@ function render(keepPage){
   const dayLabels = dayKeys.map(k=> k==='N/A' ? 'N/A' : new Date(k+'T00:00:00').toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'}));
 
   if(chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(document.getElementById('CN_mainChart'), {
-    type:'line',
-    data:{
-      labels: dayLabels,
-      datasets:[{
-        label:'Doanh thu',
-        data: dayKeys.map(k=>byDay[k]),
-        borderColor:'#33B6A4', backgroundColor:'rgba(51,182,164,0.15)',
-        fill:true, tension:0.25, pointRadius:3
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.y)+' đ'}} },
-      scales:{
-        x:{ ticks:{color:'#8DA0B5'}, grid:{display:false} },
-        y:{ ticks:{color:'#8DA0B5', callback:(v)=>fmt(v)}, grid:{color:'rgba(255,255,255,0.06)'} }
+  try{
+    chartInstance = new Chart(document.getElementById('CN_mainChart'), {
+      type:'line',
+      data:{
+        labels: dayLabels,
+        datasets:[{
+          label:'Doanh thu',
+          data: dayKeys.map(k=>byDay[k]),
+          borderColor:'#0F9488', backgroundColor:'rgba(15,148,136,0.15)',
+          fill:true, tension:0.25, pointRadius:3
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> fmt(c.parsed.y)+' đ'}} },
+        scales:{
+          x:{ ticks:{color:'#64748B'}, grid:{display:false} },
+          y:{ ticks:{color:'#64748B', callback:(v)=>fmt(v)}, grid:{color:'rgba(15,23,42,0.08)'} }
+        }
       }
-    }
-  });
+    });
+  }catch(chartErr){ console.error('Không vẽ được biểu đồ:', chartErr); const cv=document.getElementById('CN_mainChart'); if(cv&&cv.parentElement) cv.parentElement.innerHTML='<div class="empty">Không tải được thư viện biểu đồ (kiểm tra kết nối mạng). Bảng số liệu bên dưới vẫn đầy đủ.</div>'; }
 
   // ---- Bảng ----
   const cols = [
