@@ -844,16 +844,13 @@ function parseThiPhan(json){
       for(let k=9;k<=15;k++){ const c = cell(r,k); pct.push(c && typeof c.v==='number' ? c.v : 0); }
       segments[currentSeg].push({shop:label, counts, total, pct});
     } else {
-      // Không phải hàng dữ liệu (c1 không phải số). Đây là hàng tiêu đề — nhưng có 2 loại:
-      // 1) Hàng tên cột thật sự (vd c1 = "OPPO", "SAMSUNG"...) -> bỏ qua, giữ nguyên currentSeg
-      // 2) Hàng tiêu đề phân khúc mới (c1 rỗng, hoặc chứa chữ khác như "TOTAL THÁNG" do merge cell) -> bắt đầu phân khúc mới
-      const c1val = c1 && c1.v !== null && c1.v !== undefined ? String(c1.v).trim().toUpperCase() : '';
-      if(BRANDS.includes(c1val)){
-        // dòng tiêu đề cột (OPPO, SAMSUNG,...) — bỏ qua, không đổi currentSeg
-      } else {
-        currentSeg = label;
-        if(!segments[currentSeg]) segments[currentSeg] = [];
-      }
+      // Không phải hàng dữ liệu (c1 không phải số) -> đây là hàng tiêu đề.
+      // Cấu trúc mới: tiêu đề phân khúc (vd "PHÂN KHÚC TỔNG") nằm CHUNG 1 dòng với
+      // tiêu đề cột hãng (OPPO, SAMSUNG, VIVO...) do gộp ô trên Sheet, nên cột A luôn
+      // chính là tên phân khúc của khối dữ liệu ngay bên dưới -> luôn bắt đầu phân khúc mới,
+      // bất kể cột B có phải tên hãng hay không.
+      currentSeg = label;
+      if(!segments[currentSeg]) segments[currentSeg] = [];
     }
   }
   Object.keys(segments).forEach(k=>{ if(segments[k].length===0) delete segments[k]; });
