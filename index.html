@@ -823,9 +823,16 @@ document.getElementById('TP_shopSearch').addEventListener('input', render);
 
 function parseThiPhan(json){
   const rows = json.table.rows;
+  const cols = json.table.cols || [];
   const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
   const segments = {};
-  let currentSeg = null;
+  // Phân khúc ĐẦU TIÊN của sheet đôi khi không xuất hiện trong "rows": vì 2 dòng tiêu đề
+  // trên cùng của cả sheet (dòng "TOTAL THÁNG"/"% TOTAL THÁNG" + dòng tên hãng OPPO/SAMSUNG...)
+  // bị Google Sheets/gviz tự nhận diện làm HEADER của bảng, nên tên phân khúc đó (vd
+  // "PHÂN KHÚC TỔNG") bị gộp vào cols[0].label thay vì nằm trong rows. Lấy tên phân khúc
+  // khởi tạo từ đó để không bị mất dữ liệu của khối đầu tiên.
+  let currentSeg = (cols[0] && cols[0].label && String(cols[0].label).trim()) ? String(cols[0].label).trim() : null;
+  if(currentSeg) segments[currentSeg] = [];
 
   for(let i=0;i<rows.length;i++){
     const r = rows[i];
