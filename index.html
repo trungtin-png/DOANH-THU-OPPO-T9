@@ -18,6 +18,18 @@
     document.write('<script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');
   }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  // Thư viện đọc/ghi Excel (SheetJS) — dùng cho nhập/xuất dữ liệu. Có CDN dự phòng nếu CDN chính lỗi.
+  if (typeof XLSX === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+  }
+</script>
+<script>
+  if (typeof XLSX === 'undefined') {
+    document.write('<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+  }
+</script>
 <style>
 
   :root{
@@ -276,6 +288,26 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
 .filters select, .filters input{
   box-shadow: 0 1px 2px rgba(15,23,42,0.03);
 }
+
+/* ==== Xuất / Nhập dữ liệu & truy vấn nâng cao ==== */
+.topbar-actions{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+.io-btn{
+  background:var(--panel); border:1px solid var(--border); color:var(--text);
+  border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600;
+  font-family:'Inter',sans-serif; cursor:pointer; white-space:nowrap;
+}
+.io-btn:hover{ background:var(--panel-alt); }
+.io-btn.io-export-all{ background:var(--teal); color:#fff; border-color:var(--teal); }
+.io-btn.io-export-all:hover{ opacity:0.9; }
+.io-btn.io-small{ padding:6px 10px; font-size:12px; font-weight:500; }
+.io-btn.io-import{ color:var(--gold); border-color:var(--gold-dim,var(--border)); }
+.query-help{ font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+.query-error{ font-size:11.5px; color:var(--red); margin-top:4px; display:none; }
+.query-error.show{ display:block; }
+#CN_queryInput{ width:100%; }
+@media(max-width:700px){
+  .topbar-actions{ margin-left:0; }
+}
 </style>
 </head>
 <body>
@@ -288,6 +320,9 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     <button class="tab-btn" data-tab="dt">Tiến độ doanh thu</button>
     <button class="tab-btn" data-tab="cn">Chi tiết ngày</button>
   </nav>
+  <div class="topbar-actions">
+    <button class="io-btn io-export-all" id="masterExportBtn" onclick="APP_exportAll()" title="Xuất toàn bộ 4 tab đang hiển thị ra 1 file Excel nhiều sheet">⬇ Xuất Excel (tất cả)</button>
+  </div>
 </div>
 
 <section class="tab-panel active" id="tab-tp">
@@ -302,6 +337,7 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
       <span class="dot" id="TP_syncDot"></span>
       <span id="TP_syncText">Đang đồng bộ…</span>
       <button id="TP_refreshBtn" onclick="TP_loadData()">Làm mới</button>
+      <button class="io-btn io-small" onclick="APP_exportTableCSV('TP_dataTable','thi_phan')" title="Xuất bảng đang xem ra CSV (mở được bằng Excel)">⬇ CSV</button>
     </div>
   </header>
 
@@ -359,6 +395,7 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
       <span class="dot" id="SB_syncDot"></span>
       <span id="SB_syncText">Đang đồng bộ…</span>
       <button id="SB_refreshBtn" onclick="SB_loadData()">Làm mới</button>
+      <button class="io-btn io-small" onclick="APP_exportTableCSV('SB_dataTable','so_ban_ngay_moi')" title="Xuất bảng đang xem ra CSV (mở được bằng Excel)">⬇ CSV</button>
     </div>
   </header>
 
@@ -405,6 +442,7 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
       <span class="dot" id="DT_syncDot"></span>
       <span id="DT_syncText">Đang đồng bộ…</span>
       <button id="DT_refreshBtn" onclick="DT_loadData()">Làm mới</button>
+      <button class="io-btn io-small" onclick="APP_exportTableCSV('DT_dataTable','tien_do_doanh_thu')" title="Xuất bảng đang xem ra CSV (mở được bằng Excel)">⬇ CSV</button>
     </div>
   </header>
 
@@ -471,6 +509,9 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
       <span class="dot" id="CN_syncDot"></span>
       <span id="CN_syncText">Đang đồng bộ…</span>
       <button id="CN_refreshBtn" onclick="CN_loadData()">Làm mới</button>
+      <button class="io-btn io-small" onclick="CN_exportCSV()" title="Xuất TOÀN BỘ dòng đang lọc (không chỉ trang hiện tại) ra CSV">⬇ CSV</button>
+      <button class="io-btn io-small io-import" onclick="document.getElementById('CN_importFile').click()" title="Nhập dữ liệu từ tệp CSV/Excel của bạn, thay cho dữ liệu đồng bộ từ Google Sheet">⬆ Nhập dữ liệu</button>
+      <input type="file" id="CN_importFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="CN_importFile_handler(this.files[0]); this.value='';">
     </div>
   </header>
 
@@ -487,6 +528,14 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     <div class="fgroup"><span class="flabel">Hãng</span><select id="CN_brandFilter"><option value="">Tất cả hãng</option></select></div>
     <div class="fgroup"><span class="flabel">Phân khúc giá</span><select id="CN_segmentFilter"><option value="">Tất cả phân khúc</option></select></div>
     <div class="fgroup grow"><span class="flabel">Tên sản phẩm</span><input type="text" id="CN_productSearch" placeholder="Tìm theo tên sản phẩm..."></div>
+  </div>
+  <div class="filters">
+    <div class="fgroup grow">
+      <span class="flabel">Truy vấn nâng cao (tuỳ chọn — kết hợp thêm với bộ lọc phía trên)</span>
+      <input type="text" id="CN_queryInput" placeholder='vd: hãng = OPPO và doanh_thu > 5000000   |   shop chứa "145"'>
+      <div class="query-help">Trường: ngày, shop, hãng, sản_phẩm, phân_khúc, số_lượng, doanh_thu · Toán tử: = != &gt; &gt;= &lt; &lt;= chứa · Nối điều kiện bằng "và"</div>
+      <div class="query-error" id="CN_queryError"></div>
+    </div>
   </div>
   <div class="clearbar"><button id="CN_clearBtn" onclick="CN_clearFilters()">Xóa bộ lọc</button></div>
 
@@ -536,6 +585,90 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     });
   });
 })();
+</script>
+
+<script>
+// ==== Tiện ích dùng chung: xuất CSV / Excel, nhập CSV dự phòng ====
+function APP_todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function APP_csvEscape(v){
+  const s = (v===null||v===undefined) ? '' : String(v);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function APP_rowsToCSV(rows){
+  return '\uFEFF' + rows.map(r=>r.map(APP_csvEscape).join(',')).join('\r\n');
+}
+function APP_downloadBlob(content, filename, type){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+// Đọc một bảng <table> hiện có trên trang thành mảng các dòng (dùng cho các tab không phân trang: Thị phần, Số bán ngày mới, Tiến độ doanh thu)
+function APP_tableToRows(tableId){
+  const table = document.getElementById(tableId);
+  if(!table) return [];
+  const rows = [];
+  table.querySelectorAll('tr').forEach(tr=>{
+    const cells = [...tr.children].map(td=>td.textContent.replace(/\s+/g,' ').trim());
+    if(cells.length) rows.push(cells);
+  });
+  return rows;
+}
+function APP_exportTableCSV(tableId, baseName){
+  const rows = APP_tableToRows(tableId);
+  if(rows.length < 2){ alert('Không có dữ liệu để xuất — hãy kiểm tra bộ lọc hiện tại.'); return; }
+  APP_downloadBlob(APP_rowsToCSV(rows), `${baseName}_${APP_todayStr()}.csv`, 'text/csv;charset=utf-8;');
+}
+// Xuất toàn bộ 4 tab thành 1 file Excel nhiều sheet (dùng SheetJS). Riêng "Chi tiết ngày" lấy TOÀN BỘ dòng đang lọc (không chỉ trang hiện tại).
+function APP_exportAll(){
+  if(typeof XLSX === 'undefined'){
+    alert('Chưa tải được thư viện xuất Excel (kiểm tra kết nối mạng). Bạn vẫn có thể dùng nút "CSV" ở từng tab.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  let any = false;
+  [['TP_dataTable','Thi phan'], ['SB_dataTable','So ban ngay moi'], ['DT_dataTable','Tien do doanh thu']].forEach(([id,name])=>{
+    const el = document.getElementById(id);
+    if(el && el.querySelector('tbody') && el.querySelector('tbody').children.length){
+      try{ XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(el), name); any = true; }catch(e){ console.error(e); }
+    }
+  });
+  if(typeof window.CN_getExportRows === 'function'){
+    const rows = window.CN_getExportRows();
+    if(rows.length > 1){ XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Chi tiet ngay'); any = true; }
+  }
+  if(!any){ alert('Không có dữ liệu để xuất.'); return; }
+  XLSX.writeFile(wb, `OPPO_Dashboard_${APP_todayStr()}.xlsx`);
+}
+// Trình đọc CSV thuần (dự phòng khi chưa tải được SheetJS) — hỗ trợ dấu phẩy trong ngoặc kép
+function APP_parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else { inQuotes=false; } }
+      else field += c;
+    } else {
+      if(c==='"') inQuotes = true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\r'){ /* bỏ qua */ }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r=> r.length>1 || (r.length===1 && r[0]!==''));
+}
+window.APP_exportTableCSV = APP_exportTableCSV;
+window.APP_exportAll = APP_exportAll;
+window.APP_parseCSV = APP_parseCSV;
+window.APP_todayStr = APP_todayStr;
 </script>
 
 <script>
@@ -1398,8 +1531,78 @@ function clearFilters(){
   document.getElementById('CN_brandFilter').value = '';
   document.getElementById('CN_segmentFilter').value = '';
   document.getElementById('CN_productSearch').value = '';
+  document.getElementById('CN_queryInput').value = '';
+  document.getElementById('CN_queryError').classList.remove('show');
   currentPage = 1;
   render();
+}
+
+// ==== Truy vấn nâng cao: "trường toán_tử giá_trị [và trường toán_tử giá_trị ...]" ====
+const QUERY_FIELDS = {
+  ngay:'date', date:'date',
+  shop:'shop',
+  hang:'brand', brand:'brand', hãng:'brand',
+  sanpham:'product', product:'product',
+  phankhuc:'segment', segment:'segment',
+  soluong:'qty', qty:'qty',
+  doanhthu:'revenue', revenue:'revenue'
+};
+function normToken(s){
+  return String(s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/gi,'d').replace(/[_\s]+/g,'');
+}
+function parseQueryExpr(expr){
+  const clauses = expr.split(/\s+(?:và|va|and|&&)\s+/i).map(s=>s.trim()).filter(Boolean);
+  if(!clauses.length) return ()=>true;
+  const preds = clauses.map(clause=>{
+    const m = clause.match(/^(.+?)\s*(>=|<=|!=|=|>|<|chứa|chua|contains)\s*(.+)$/i);
+    if(!m) throw new Error(`Không hiểu điều kiện: "${clause}"`);
+    const field = QUERY_FIELDS[normToken(m[1])];
+    if(!field) throw new Error(`Không rõ trường "${m[1].trim()}". Dùng: ngày, shop, hãng, sản_phẩm, phân_khúc, số_lượng, doanh_thu.`);
+    const op = m[2].toLowerCase();
+    const val = m[3].trim().replace(/^["']|["']$/g,'');
+    return (r)=>{
+      if(field==='date'){
+        const tv = new Date(val);
+        if(isNaN(tv)) return true;
+        const tTime = new Date(tv.getFullYear(),tv.getMonth(),tv.getDate()).getTime();
+        if(!r.date) return false;
+        const fTime = new Date(r.date.getFullYear(),r.date.getMonth(),r.date.getDate()).getTime();
+        switch(op){ case '=': return fTime===tTime; case '!=': return fTime!==tTime; case '>': return fTime>tTime; case '>=': return fTime>=tTime; case '<': return fTime<tTime; case '<=': return fTime<=tTime; default: return true; }
+      }
+      if(field==='qty' || field==='revenue'){
+        const nv = Number(String(val).replace(/[.,\s]/g,''));
+        const fv = r[field];
+        if(isNaN(nv)) return true;
+        switch(op){ case '=': return fv===nv; case '!=': return fv!==nv; case '>': return fv>nv; case '>=': return fv>=nv; case '<': return fv<nv; case '<=': return fv<=nv; default: return true; }
+      }
+      const fs = String(r[field]||'').toLowerCase();
+      const vs = val.toLowerCase();
+      switch(op){
+        case '=': return fs===vs;
+        case '!=': return fs!==vs;
+        case 'chứa': case 'chua': case 'contains': return fs.includes(vs);
+        default: return fs.includes(vs);
+      }
+    };
+  });
+  return (r)=> preds.every(p=>p(r));
+}
+function getQueryPredicate(){
+  const el = document.getElementById('CN_queryInput');
+  const errEl = document.getElementById('CN_queryError');
+  const expr = el.value.trim();
+  if(!expr){ errEl.classList.remove('show'); errEl.textContent=''; return ()=>true; }
+  try{
+    const pred = parseQueryExpr(expr);
+    errEl.classList.remove('show'); errEl.textContent='';
+    return pred;
+  }catch(e){
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+    return ()=>true;
+  }
 }
 
 function getFiltered(){
@@ -1409,6 +1612,7 @@ function getFiltered(){
   const brand = document.getElementById('CN_brandFilter').value;
   const seg = document.getElementById('CN_segmentFilter').value;
   const q = document.getElementById('CN_productSearch').value.trim().toLowerCase();
+  const queryPred = getQueryPredicate();
 
   return ROWS.filter(r=>{
     if(dFrom && (!r.date || r.date < dFrom)) return false;
@@ -1417,6 +1621,7 @@ function getFiltered(){
     if(brand && r.brand !== brand) return false;
     if(seg && r.segment !== seg) return false;
     if(q && !(r.product||'').toLowerCase().includes(q)) return false;
+    if(!queryPred(r)) return false;
     return true;
   });
 }
@@ -1543,6 +1748,119 @@ function setSort(key){
   document.getElementById(id).addEventListener('change', ()=>render());
 });
 document.getElementById('CN_productSearch').addEventListener('input', ()=>render());
+
+let CN_queryDebounce = null;
+document.getElementById('CN_queryInput').addEventListener('input', ()=>{
+  clearTimeout(CN_queryDebounce);
+  CN_queryDebounce = setTimeout(()=>render(), 350);
+});
+
+// ==== Xuất TOÀN BỘ dòng đang lọc (không chỉ trang hiện tại) ====
+function getExportRows(){
+  const sorted = sortRows(getFiltered());
+  const header = ['Ngày','Shop','Hãng','Sản phẩm','Phân khúc','Số lượng','Doanh thu'];
+  const data = sorted.map(r=>[fmtDate(r.date), r.shop, r.brand, r.product, r.segment, r.qty, r.revenue]);
+  return [header, ...data];
+}
+function exportCSV(){
+  const rows = getExportRows();
+  if(rows.length < 2){ alert('Không có dữ liệu để xuất — hãy kiểm tra bộ lọc/truy vấn hiện tại.'); return; }
+  APP_downloadBlob(APP_rowsToCSV(rows), `chi_tiet_ngay_${APP_todayStr()}.csv`, 'text/csv;charset=utf-8;');
+}
+window.CN_exportCSV = exportCSV;
+window.CN_getExportRows = getExportRows;
+
+// ==== Nhập dữ liệu từ tệp CSV/Excel của người dùng (thay cho đồng bộ Google Sheet) ====
+const IMPORT_HEADER_MAP = {
+  ngay:'date', date:'date',
+  shop:'shop', sieuthi:'shop',
+  hang:'brand', brand:'brand',
+  sanpham:'product', product:'product', tensanpham:'product',
+  phankhuc:'segment', segment:'segment', phankhucgia:'segment',
+  soluong:'qty', qty:'qty', quantity:'qty',
+  doanhthu:'revenue', revenue:'revenue', dongia:null // đơn giá không dùng trực tiếp
+};
+function excelSerialToDate(n){ return new Date(Math.round((n-25569)*86400*1000)); }
+function parseImportDate(v){
+  if(v===null || v===undefined || v==='') return null;
+  if(v instanceof Date) return v;
+  if(typeof v === 'number') return excelSerialToDate(v);
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function rowsFromAOA(aoa){
+  if(!aoa || !aoa.length) return [];
+  const headerRow = aoa[0].map(h=> normToken(h));
+  const idx = {};
+  headerRow.forEach((h,i)=>{ const f = IMPORT_HEADER_MAP[h]; if(f && !(f in idx)) idx[f]=i; });
+  const need = ['date','shop','brand','product','segment','qty','revenue'];
+  const missing = need.filter(k=> !(k in idx));
+  if(missing.length) throw new Error('Thiếu cột: '+missing.join(', ')+'. Cần đủ 7 cột: Ngày, Shop, Hãng, Sản phẩm, Phân khúc, Số lượng, Doanh thu.');
+  const out = [];
+  for(let i=1;i<aoa.length;i++){
+    const row = aoa[i];
+    if(!row || row.every(c=>c===undefined || c==='')) continue;
+    const shop = row[idx.shop]!=null ? String(row[idx.shop]).trim() : '';
+    if(!shop) continue;
+    out.push({
+      date: parseImportDate(row[idx.date]),
+      shop,
+      brand: row[idx.brand]!=null ? String(row[idx.brand]).trim() : '',
+      product: row[idx.product]!=null ? String(row[idx.product]).trim() : '',
+      segment: row[idx.segment]!=null ? String(row[idx.segment]).trim() : '',
+      qty: Number(row[idx.qty])||0,
+      revenue: Number(row[idx.revenue])||0
+    });
+  }
+  return out;
+}
+function applyImportedRows(parsed, fileName){
+  if(!parsed.length) throw new Error('Không đọc được dòng dữ liệu hợp lệ nào trong tệp.');
+  ROWS = parsed;
+  document.getElementById('CN_syncDot').classList.add('off');
+  document.getElementById('CN_syncText').textContent = `Đã nhập ${parsed.length} dòng từ tệp`;
+  document.getElementById('CN_footerNote').innerHTML =
+    `Dữ liệu nhập thủ công từ tệp "${fileName}" · ${new Date().toLocaleTimeString('vi-VN')} · <a href="javascript:void(0)" onclick="CN_loadData()">Đồng bộ lại từ Google Sheet ↗</a>`;
+  currentPage = 1;
+  render();
+}
+function importFileHandler(file){
+  if(!file) return;
+  const isCSV = /\.csv$/i.test(file.name);
+  const reader = new FileReader();
+  reader.onerror = ()=> alert('Không đọc được tệp.');
+  if(isCSV){
+    reader.onload = (e)=>{
+      try{
+        let aoa;
+        if(typeof XLSX !== 'undefined'){
+          const wb = XLSX.read(e.target.result, {type:'string'});
+          aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true});
+        } else {
+          aoa = APP_parseCSV(e.target.result);
+        }
+        applyImportedRows(rowsFromAOA(aoa), file.name);
+      }catch(err){ alert('Lỗi khi nhập dữ liệu: ' + err.message); }
+    };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    if(typeof XLSX === 'undefined'){ alert('Chưa tải được thư viện đọc Excel (kiểm tra mạng). Hãy thử xuất tệp .csv rồi nhập lại.'); return; }
+    reader.onload = (e)=>{
+      try{
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true});
+        applyImportedRows(rowsFromAOA(aoa), file.name);
+      }catch(err){ alert('Lỗi khi nhập dữ liệu: ' + err.message); }
+    };
+    reader.readAsBinaryString(file);
+  }
+}
+window.CN_importFile_handler = importFileHandler;
 
 // ---- Đọc dữ liệu Google Sheet (gviz JSONP) ----
 function parseGDate(cell){
