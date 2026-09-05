@@ -1705,6 +1705,7 @@ function render(keepPage){
   const cols = [
     {key:'date', label:'Ngày'},
     {key:'shop', label:'Shop'},
+    {key:'creator', label:'Người tạo'},
     {key:'brand', label:'Hãng'},
     {key:'product', label:'Sản phẩm'},
     {key:'segment', label:'Phân khúc'},
@@ -1727,6 +1728,7 @@ function render(keepPage){
       <tr>
         <td>${fmtDate(r.date)}</td>
         <td>${r.shop}</td>
+        <td>${r.creator||''}</td>
         <td>${r.brand}</td>
         <td>${r.product}</td>
         <td>${r.segment}</td>
@@ -1736,7 +1738,7 @@ function render(keepPage){
     `).join('');
     html += `
       <tr class="total-row">
-        <td colspan="5">TỔNG (${sorted.length} dòng đang lọc)</td>
+        <td colspan="6">TỔNG (${sorted.length} dòng đang lọc)</td>
         <td class="num">${fmt(totalQty)}</td>
         <td class="num">${fmt(totalRevenue)} đ</td>
       </tr>`;
@@ -1767,8 +1769,8 @@ document.getElementById('CN_queryInput').addEventListener('input', ()=>{
 // ==== Xuất TOÀN BỘ dòng đang lọc (không chỉ trang hiện tại) ====
 function getExportRows(){
   const sorted = sortRows(getFiltered());
-  const header = ['Ngày','Shop','Hãng','Sản phẩm','Phân khúc','Số lượng','Doanh thu'];
-  const data = sorted.map(r=>[fmtDate(r.date), r.shop, r.brand, r.product, r.segment, r.qty, r.revenue]);
+  const header = ['Ngày','Shop','Người tạo','Hãng','Sản phẩm','Phân khúc','Số lượng','Doanh thu'];
+  const data = sorted.map(r=>[fmtDate(r.date), r.shop, r.creator||'', r.brand, r.product, r.segment, r.qty, r.revenue]);
   return [header, ...data];
 }
 function exportCSV(){
