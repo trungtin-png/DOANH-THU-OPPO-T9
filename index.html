@@ -416,7 +416,7 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     <h2>Chi tiết theo shop</h2>
     <p style="margin:-10px 0 14px;font-size:12.5px;color:var(--muted);">
       <span class="lose-badge" style="margin-left:0;">Thua đối thủ</span>
-      &nbsp;= shop có ít nhất 1 hãng khác bán nhiều hơn OPPO trên 1 đơn vị tại shop đó.
+      &nbsp;= shop có ít nhất 1 hãng khác bán nhiều hơn OPPO (dù chỉ hơn 1 đơn vị) tại shop đó.
     </p>
     <div style="overflow-x:auto;">
       <table class="data" id="SB_dataTable">
@@ -1086,13 +1086,13 @@ function render(){
   const losingCount = rows.filter(r=>{
     const oppoCount = r.counts[0]||0;
     const rivalMax = Math.max(0, ...r.counts.slice(1));
-    return (rivalMax - oppoCount) > 1;
+    return rivalMax > oppoCount;
   }).length;
 
   document.getElementById('SB_statsRow').innerHTML = `
     <div class="stat gold"><div class="label">Tổng số lượng bán</div><div class="value">${fmt(grandTotal)} máy</div></div>
     <div class="stat teal"><div class="label">Hãng dẫn đầu</div><div class="value">${grandTotal? BRANDS[topIdx]+' · '+fmtPct(brandTotals[topIdx]/grandTotal) : '—'}</div></div>
-    <div class="stat"><div class="label">Shop thua đối thủ (&gt;1 đơn vị)</div><div class="value" style="color:${losingCount>0?'#DC2626':'inherit'}">${losingCount} / ${rows.length}</div></div>
+    <div class="stat"><div class="label">Shop thua đối thủ</div><div class="value" style="color:${losingCount>0?'#DC2626':'inherit'}">${losingCount} / ${rows.length}</div></div>
   `;
 
   try{
@@ -1126,10 +1126,10 @@ function render(){
     let html = rows.map(r=>{
       const oppoCount = r.counts[0]||0;
       const rivalMax = Math.max(0, ...r.counts.slice(1));
-      const losing = (rivalMax - oppoCount) > 1;
+      const losing = rivalMax > oppoCount;
       return `
       <tr class="${losing ? 'row-lose' : ''}">
-        <td>${r.shop}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ trên 1 đơn vị tại shop này">Thua đối thủ</span>' : ''}</td>
+        <td>${r.shop}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ tại shop này">Thua đối thủ</span>' : ''}</td>
         ${r.counts.map((c,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(c)}</td>`).join('')}
         <td class="num">${fmt(r.total)}</td>
         ${r.pct.map((p,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmtPct(p)}</td>`).join('')}
