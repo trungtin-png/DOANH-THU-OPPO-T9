@@ -524,9 +524,10 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
         <input type="date" id="CN_dateTo">
       </div>
     </div>
-    <div class="fgroup"><span class="flabel">Shop</span><select id="CN_shopFilter"><option value="">Tất cả shop</option></select></div>
-    <div class="fgroup"><span class="flabel">Hãng</span><select id="CN_brandFilter"><option value="">Tất cả hãng</option></select></div>
-    <div class="fgroup"><span class="flabel">Phân khúc giá</span><select id="CN_segmentFilter"><option value="">Tất cả phân khúc</option></select></div>
+    <div class="fgroup"><span class="flabel">Siêu thị xuất</span><select id="CN_shopFilter"><option value="">Tất cả siêu thị xuất</option></select></div>
+    <div class="fgroup"><span class="flabel">Nhà sản xuất</span><select id="CN_brandFilter"><option value="">Tất cả nhà sản xuất</option></select></div>
+    <div class="fgroup"><span class="flabel">Phân khúc</span><select id="CN_segmentFilter"><option value="">Tất cả phân khúc</option></select></div>
+    <div class="fgroup"><span class="flabel">Người tạo</span><select id="CN_creatorFilter"><option value="">Tất cả người tạo</option></select></div>
     <div class="fgroup grow"><span class="flabel">Tên sản phẩm</span><input type="text" id="CN_productSearch" placeholder="Tìm theo tên sản phẩm..."></div>
   </div>
   <div class="filters">
@@ -565,7 +566,7 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     </div>
   </div>
 
-  <footer id="CN_footerNote">Nguồn: Google Sheet "DOANH THU OPPO" — sheet CHI TIẾT NGÀY</footer>
+  <footer id="CN_footerNote">Nguồn: Google Sheet "DOANH THU OPPO" — sheet RAW_DATA</footer>
 </div>
 </section>
 
@@ -1470,24 +1471,24 @@ loadData();
 (function(){
 
 const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
-const SHEET_NAME = 'CHI TIẾT NGÀY';
+const SHEET_NAME = 'RAW_DATA';
 const PAGE_SIZE = 50;
 
 // Dữ liệu mẫu dùng khi chưa đồng bộ được với Google Sheet
 const FALLBACK_ROWS = [
-  {date:new Date(2026,8,1), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', brand:'OPPO', product:'Reno13 F 5G', segment:'6-8 triệu', qty:3, revenue:23970000},
-  {date:new Date(2026,8,1), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', brand:'SAMSUNG', product:'Galaxy A16', segment:'4-6 triệu', qty:2, revenue:9980000},
-  {date:new Date(2026,8,1), shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', brand:'OPPO', product:'A3x', segment:'Dưới 4 triệu', qty:5, revenue:14950000},
-  {date:new Date(2026,8,2), shop:'TGD_TNI_GDA - Phước Đông', brand:'VIVO', product:'Y19s', segment:'4-6 triệu', qty:1, revenue:4790000},
-  {date:new Date(2026,8,2), shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', brand:'OPPO', product:'Reno13 5G', segment:'8-10 triệu', qty:2, revenue:19980000},
-  {date:new Date(2026,8,2), shop:'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)', brand:'IPHONE', product:'iPhone 16', segment:'Trên 10 triệu', qty:1, revenue:19990000},
-  {date:new Date(2026,8,3), shop:'TGD_TNI_TBA - 180 Quốc Lộ 22', brand:'REALME', product:'C71', segment:'Dưới 4 triệu', qty:4, revenue:11960000},
-  {date:new Date(2026,8,3), shop:'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)', brand:'XIAOMI', product:'Redmi 14C', segment:'Dưới 4 triệu', qty:2, revenue:5980000},
-  {date:new Date(2026,8,3), shop:'ĐMS_TNI_TBA - An Hòa', brand:'OPPO', product:'A3x', segment:'Dưới 4 triệu', qty:3, revenue:8970000},
-  {date:new Date(2026,8,4), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', brand:'OPPO', product:'Reno13 F 5G', segment:'6-8 triệu', qty:2, revenue:15980000},
-  {date:new Date(2026,8,4), shop:'ĐMM_TNI_TBA - An Tịnh', brand:'SAMSUNG', product:'Galaxy A56', segment:'8-10 triệu', qty:1, revenue:9490000},
-  {date:new Date(2026,8,5), shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', brand:'OPPO', product:'Reno13 5G', segment:'8-10 triệu', qty:1, revenue:9990000},
-  {date:new Date(2026,8,5), shop:'ĐMS_TNI_TBA - 387 ĐT787B', brand:'OTHER', product:'Nokia 105', segment:'Dưới 4 triệu', qty:6, revenue:3000000}
+  {date:new Date(2026,8,1), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', brand:'OPPO', product:'Reno13 F 5G', segment:'6-8 triệu', qty:3, revenue:23970000, creator:'Nguyễn Văn A'},
+  {date:new Date(2026,8,1), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', brand:'SAMSUNG', product:'Galaxy A16', segment:'4-6 triệu', qty:2, revenue:9980000, creator:'Nguyễn Văn A'},
+  {date:new Date(2026,8,1), shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', brand:'OPPO', product:'A3x', segment:'Dưới 4 triệu', qty:5, revenue:14950000, creator:'Trần Thị B'},
+  {date:new Date(2026,8,2), shop:'TGD_TNI_GDA - Phước Đông', brand:'VIVO', product:'Y19s', segment:'4-6 triệu', qty:1, revenue:4790000, creator:'Lê Văn C'},
+  {date:new Date(2026,8,2), shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', brand:'OPPO', product:'Reno13 5G', segment:'8-10 triệu', qty:2, revenue:19980000, creator:'Trần Thị B'},
+  {date:new Date(2026,8,2), shop:'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)', brand:'IPHONE', product:'iPhone 16', segment:'Trên 10 triệu', qty:1, revenue:19990000, creator:'Lê Văn C'},
+  {date:new Date(2026,8,3), shop:'TGD_TNI_TBA - 180 Quốc Lộ 22', brand:'REALME', product:'C71', segment:'Dưới 4 triệu', qty:4, revenue:11960000, creator:'Nguyễn Văn A'},
+  {date:new Date(2026,8,3), shop:'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)', brand:'XIAOMI', product:'Redmi 14C', segment:'Dưới 4 triệu', qty:2, revenue:5980000, creator:'Phạm Thị D'},
+  {date:new Date(2026,8,3), shop:'ĐMS_TNI_TBA - An Hòa', brand:'OPPO', product:'A3x', segment:'Dưới 4 triệu', qty:3, revenue:8970000, creator:'Phạm Thị D'},
+  {date:new Date(2026,8,4), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', brand:'OPPO', product:'Reno13 F 5G', segment:'6-8 triệu', qty:2, revenue:15980000, creator:'Nguyễn Văn A'},
+  {date:new Date(2026,8,4), shop:'ĐMM_TNI_TBA - An Tịnh', brand:'SAMSUNG', product:'Galaxy A56', segment:'8-10 triệu', qty:1, revenue:9490000, creator:'Lê Văn C'},
+  {date:new Date(2026,8,5), shop:'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)', brand:'OPPO', product:'Reno13 5G', segment:'8-10 triệu', qty:1, revenue:9990000, creator:'Trần Thị B'},
+  {date:new Date(2026,8,5), shop:'ĐMS_TNI_TBA - 387 ĐT787B', brand:'OTHER', product:'Nokia 105', segment:'Dưới 4 triệu', qty:6, revenue:3000000, creator:'Phạm Thị D'}
 ];
 
 let ROWS = FALLBACK_ROWS.slice();
@@ -1509,19 +1510,23 @@ function fillFilterOptions(){
   const shopSel = document.getElementById('CN_shopFilter');
   const brandSel = document.getElementById('CN_brandFilter');
   const segSel = document.getElementById('CN_segmentFilter');
-  const curShop = shopSel.value, curBrand = brandSel.value, curSeg = segSel.value;
+  const creatorSel = document.getElementById('CN_creatorFilter');
+  const curShop = shopSel.value, curBrand = brandSel.value, curSeg = segSel.value, curCreator = creatorSel.value;
 
   const shops = uniqueSorted(ROWS.map(r=>r.shop));
   const brands = uniqueSorted(ROWS.map(r=>r.brand));
   const segs = uniqueSorted(ROWS.map(r=>r.segment));
+  const creators = uniqueSorted(ROWS.map(r=>r.creator));
 
-  shopSel.innerHTML = '<option value="">Tất cả shop</option>' + shops.map(s=>`<option value="${s}">${s}</option>`).join('');
-  brandSel.innerHTML = '<option value="">Tất cả hãng</option>' + brands.map(s=>`<option value="${s}">${s}</option>`).join('');
+  shopSel.innerHTML = '<option value="">Tất cả siêu thị xuất</option>' + shops.map(s=>`<option value="${s}">${s}</option>`).join('');
+  brandSel.innerHTML = '<option value="">Tất cả nhà sản xuất</option>' + brands.map(s=>`<option value="${s}">${s}</option>`).join('');
   segSel.innerHTML = '<option value="">Tất cả phân khúc</option>' + segs.map(s=>`<option value="${s}">${s}</option>`).join('');
+  creatorSel.innerHTML = '<option value="">Tất cả người tạo</option>' + creators.map(s=>`<option value="${s}">${s}</option>`).join('');
 
   if(shops.includes(curShop)) shopSel.value = curShop;
   if(brands.includes(curBrand)) brandSel.value = curBrand;
   if(segs.includes(curSeg)) segSel.value = curSeg;
+  if(creators.includes(curCreator)) creatorSel.value = curCreator;
 }
 
 function clearFilters(){
@@ -1530,6 +1535,7 @@ function clearFilters(){
   document.getElementById('CN_shopFilter').value = '';
   document.getElementById('CN_brandFilter').value = '';
   document.getElementById('CN_segmentFilter').value = '';
+  document.getElementById('CN_creatorFilter').value = '';
   document.getElementById('CN_productSearch').value = '';
   document.getElementById('CN_queryInput').value = '';
   document.getElementById('CN_queryError').classList.remove('show');
@@ -1545,7 +1551,8 @@ const QUERY_FIELDS = {
   sanpham:'product', product:'product',
   phankhuc:'segment', segment:'segment',
   soluong:'qty', qty:'qty',
-  doanhthu:'revenue', revenue:'revenue'
+  doanhthu:'revenue', revenue:'revenue',
+  nguoitao:'creator', creator:'creator'
 };
 function normToken(s){
   return String(s||'').trim().toLowerCase()
@@ -1559,7 +1566,7 @@ function parseQueryExpr(expr){
     const m = clause.match(/^(.+?)\s*(>=|<=|!=|=|>|<|chứa|chua|contains)\s*(.+)$/i);
     if(!m) throw new Error(`Không hiểu điều kiện: "${clause}"`);
     const field = QUERY_FIELDS[normToken(m[1])];
-    if(!field) throw new Error(`Không rõ trường "${m[1].trim()}". Dùng: ngày, shop, hãng, sản_phẩm, phân_khúc, số_lượng, doanh_thu.`);
+    if(!field) throw new Error(`Không rõ trường "${m[1].trim()}". Dùng: ngày, shop, hãng, sản_phẩm, phân_khúc, số_lượng, doanh_thu, người_tạo.`);
     const op = m[2].toLowerCase();
     const val = m[3].trim().replace(/^["']|["']$/g,'');
     return (r)=>{
@@ -1611,6 +1618,7 @@ function getFiltered(){
   const shop = document.getElementById('CN_shopFilter').value;
   const brand = document.getElementById('CN_brandFilter').value;
   const seg = document.getElementById('CN_segmentFilter').value;
+  const creator = document.getElementById('CN_creatorFilter').value;
   const q = document.getElementById('CN_productSearch').value.trim().toLowerCase();
   const queryPred = getQueryPredicate();
 
@@ -1620,6 +1628,7 @@ function getFiltered(){
     if(shop && r.shop !== shop) return false;
     if(brand && r.brand !== brand) return false;
     if(seg && r.segment !== seg) return false;
+    if(creator && r.creator !== creator) return false;
     if(q && !(r.product||'').toLowerCase().includes(q)) return false;
     if(!queryPred(r)) return false;
     return true;
@@ -1744,7 +1753,7 @@ function setSort(key){
   render(true);
 }
 
-['CN_dateFrom','CN_dateTo','CN_shopFilter','CN_brandFilter','CN_segmentFilter'].forEach(id=>{
+['CN_dateFrom','CN_dateTo','CN_shopFilter','CN_brandFilter','CN_segmentFilter','CN_creatorFilter'].forEach(id=>{
   document.getElementById(id).addEventListener('change', ()=>render());
 });
 document.getElementById('CN_productSearch').addEventListener('input', ()=>render());
@@ -1778,7 +1787,8 @@ const IMPORT_HEADER_MAP = {
   sanpham:'product', product:'product', tensanpham:'product',
   phankhuc:'segment', segment:'segment', phankhucgia:'segment',
   soluong:'qty', qty:'qty', quantity:'qty',
-  doanhthu:'revenue', revenue:'revenue', dongia:null // đơn giá không dùng trực tiếp
+  doanhthu:'revenue', revenue:'revenue', dongia:null, // đơn giá không dùng trực tiếp
+  nguoitao:'creator', creator:'creator'
 };
 function excelSerialToDate(n){ return new Date(Math.round((n-25569)*86400*1000)); }
 function parseImportDate(v){
@@ -1814,7 +1824,8 @@ function rowsFromAOA(aoa){
       product: row[idx.product]!=null ? String(row[idx.product]).trim() : '',
       segment: row[idx.segment]!=null ? String(row[idx.segment]).trim() : '',
       qty: Number(row[idx.qty])||0,
-      revenue: Number(row[idx.revenue])||0
+      revenue: Number(row[idx.revenue])||0,
+      creator: ('creator' in idx && row[idx.creator]!=null) ? String(row[idx.creator]).trim() : ''
     });
   }
   return out;
@@ -1880,29 +1891,32 @@ function parseGDate(cell){
   return null;
 }
 
-// Thứ tự cột thật trong sheet:
-// 0 NGÀY | 1 MÃ SIÊU THỊ | 2 SIÊU THỊ | 3 HÃNG | 4 PHÂN KHÚC GIÁ | 5 MÃ SẢN PHẨM | 6 TÊN SẢN PHẨM | 7 SỐ LƯỢNG(Tổng) | 8 ĐƠN GIÁ
+// Thứ tự cột thật trong tab RAW_DATA (dán nguyên từ Raw_MWG, KHÔNG chỉnh sửa):
+// 0 LOẠI SHOP | 1 MÃ TỈNH | 2 MIỀN | 3 KHU VỰC | 4 TỈNH | 5 PHÂN KHÚC | 6 Thương hiệu | 7 Loại YCX |
+// 8 Người tạo | 9 Ngày xuất hàng | 10 Mã siêu thị xuất hàng | 11 Siêu thị xuất | 12 Tên sản phẩm |
+// 13 Số lượng | 14 Giá bán | 15 Nhà sản xuất | 16 Trạng thái hồ sơ
+// Chỉ lấy đúng 9 trường cần cho dashboard (9,10,11,15,5,12,13,14,8) — các cột còn lại không dùng.
 function parseChiTietNgay(json){
   const rows = json.table.rows;
   const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
   const out = [];
   for(let i=0;i<rows.length;i++){
     const r = rows[i];
-    const c0 = cell(r,0);
-    const shop = cell(r,2) && cell(r,2).v!=null ? String(cell(r,2).v).trim() : '';
+    const shop = cell(r,11) && cell(r,11).v!=null ? String(cell(r,11).v).trim() : '';
     if(!shop) continue; // bỏ dòng tiêu đề / trống
-    const date = parseGDate(c0);
-    const brand = cell(r,3) && cell(r,3).v!=null ? String(cell(r,3).v).trim() : '';
-    const segment = cell(r,4) && cell(r,4).v!=null ? String(cell(r,4).v).trim() : '';
-    const product = cell(r,6) && cell(r,6).v!=null ? String(cell(r,6).v).trim() : '';
-    const qtyCell = cell(r,7);
+    const date = parseGDate(cell(r,9));
+    const brand = cell(r,15) && cell(r,15).v!=null ? String(cell(r,15).v).trim() : ''; // Nhà sản xuất
+    const segment = cell(r,5) && cell(r,5).v!=null ? String(cell(r,5).v).trim() : '';  // Phân khúc
+    const product = cell(r,12) && cell(r,12).v!=null ? String(cell(r,12).v).trim() : '';
+    const qtyCell = cell(r,13);
     const qty = qtyCell && typeof qtyCell.v==='number' ? qtyCell.v : 0;
-    const priceCell = cell(r,8);
+    const priceCell = cell(r,14);
     const unitPrice = priceCell && typeof priceCell.v==='number' ? priceCell.v : 0;
     const revenue = qty * unitPrice;
-    out.push({date, shop, brand, product, segment, qty, revenue});
+    const creator = cell(r,8) && cell(r,8).v!=null ? String(cell(r,8).v).trim() : ''; // Người tạo
+    out.push({date, shop, brand, product, segment, qty, revenue, creator});
   }
-  if(out.length===0) throw new Error('Không đọc được dữ liệu CHI TIẾT NGÀY');
+  if(out.length===0) throw new Error('Không đọc được dữ liệu RAW_DATA');
   return out;
 }
 
@@ -1941,7 +1955,7 @@ function handleFail(msg){
   document.getElementById('CN_syncDot').classList.add('off');
   document.getElementById('CN_syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
   document.getElementById('CN_footerNote').innerHTML =
-    `${msg} Kiểm tra tên tab trong Sheet có đúng là "CHI TIẾT NGÀY" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
+    `${msg} Kiểm tra tên tab trong Sheet có đúng là "RAW_DATA" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
   ROWS = FALLBACK_ROWS.slice();
   render();
 }
