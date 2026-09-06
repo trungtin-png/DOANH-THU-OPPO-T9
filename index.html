@@ -312,6 +312,56 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
 </head>
 <body>
 
+<div id="pwGate" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:32px 28px;max-width:340px;width:100%;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;margin-bottom:4px;">OPPO Dashboard</div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Nhập mật khẩu để xem dashboard</p>
+    <input type="password" id="pwInput" placeholder="Mật khẩu" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+    <div id="pwError" style="color:var(--red);font-size:12.5px;min-height:18px;margin-top:6px;"></div>
+    <button id="pwSubmit" style="width:100%;margin-top:8px;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Vào Dashboard</button>
+  </div>
+</div>
+<script>
+(function(){
+  const HASH = 'd6780e8ef3500695b785957d0ae8b2a4fbbed5249ab999643b8bdd46c1605e2d';
+  const gate = document.getElementById('pwGate');
+  const input = document.getElementById('pwInput');
+  const err = document.getElementById('pwError');
+  const btn = document.getElementById('pwSubmit');
+
+  async function sha256Hex(text){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function unlock(){
+    gate.style.display = 'none';
+    sessionStorage.setItem('oppo_dash_unlocked', '1');
+  }
+
+  if(sessionStorage.getItem('oppo_dash_unlocked') === '1'){
+    unlock();
+  }
+
+  async function tryUnlock(){
+    const v = input.value;
+    if(!v){ err.textContent = 'Vui lòng nhập mật khẩu.'; return; }
+    try{
+      const h = await sha256Hex(v);
+      if(h === HASH){ err.textContent=''; unlock(); }
+      else { err.textContent = 'Sai mật khẩu, thử lại.'; input.value=''; input.focus(); }
+    }catch(e){
+      // Trình duyệt cũ không hỗ trợ crypto.subtle (hiếm) — không chặn người dùng vì lỗi kỹ thuật
+      console.error(e); unlock();
+    }
+  }
+
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
+})();
+</script>
+
+
 <div class="topbar">
   <div class="brand">OPPO Dashboard</div>
   <nav class="tabs">
@@ -319,9 +369,10 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     <button class="tab-btn" data-tab="sb">Số bán ngày mới</button>
     <button class="tab-btn" data-tab="dt">Tiến độ doanh thu</button>
     <button class="tab-btn" data-tab="cn">Chi tiết ngày</button>
+    <button class="tab-btn" data-tab="ctd">Chi tiết doanh thu</button>
   </nav>
   <div class="topbar-actions">
-    <button class="io-btn io-export-all" id="masterExportBtn" onclick="APP_exportAll()" title="Xuất toàn bộ 4 tab đang hiển thị ra 1 file Excel nhiều sheet">⬇ Xuất Excel (tất cả)</button>
+    <button class="io-btn io-export-all" id="masterExportBtn" onclick="APP_exportAll()" title="Xuất toàn bộ 5 tab đang hiển thị ra 1 file Excel nhiều sheet">⬇ Xuất Excel (tất cả)</button>
   </div>
 </div>
 
@@ -570,10 +621,298 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
 </div>
 </section>
 
+<section class="tab-panel" id="tab-ctd">
+<div class="wrap">
+
+  <header>
+    <div class="titleblock">
+      <h1>Chi tiết doanh thu</h1>
+      <p>OPPO · doanh thu theo shop và model, tổng hợp từ dữ liệu Raw_MWG (12 shop MWG)</p>
+    </div>
+    <div class="syncbox">
+      <span class="dot" id="CTD_syncDot"></span>
+      <span id="CTD_syncText">Đang đồng bộ…</span>
+      <button id="CTD_refreshBtn" onclick="CTD_loadData()">Làm mới</button>
+      <button class="io-btn io-small" onclick="APP_exportTableCSV('CTD_dataTable','chi_tiet_doanh_thu')" title="Xuất bảng đang xem ra CSV (mở được bằng Excel)">⬇ CSV</button>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="fgroup">
+      <span class="flabel">Khoảng ngày</span>
+      <div class="daterange">
+        <input type="date" id="CTD_dateFrom">
+        <span style="color:var(--muted);">–</span>
+        <input type="date" id="CTD_dateTo">
+      </div>
+    </div>
+    <div class="fgroup"><span class="flabel">Shop</span><select id="CTD_shopFilter"><option value="">Tất cả shop</option></select></div>
+    <div class="fgroup"><span class="flabel">Model</span><select id="CTD_modelFilter"><option value="">Tất cả model</option></select></div>
+  </div>
+  <div class="clearbar"><button id="CTD_clearBtn" onclick="CTD_clearFilters()">Xóa bộ lọc</button></div>
+
+  <div class="stats" id="CTD_statsRow"></div>
+
+  <div class="panel">
+    <h2>Doanh thu theo Model</h2>
+    <div style="position:relative;height:340px;">
+      <canvas id="CTD_mainChart" role="img" aria-label="Biểu đồ doanh thu theo model"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Doanh thu theo Shop × Model</h2>
+    <p style="margin:-10px 0 14px;font-size:12.5px;color:var(--muted);">
+      Chỉ tính 12 shop MWG (không gồm FPT/VTS). Cột <strong>IoT</strong> không tự tính — nhập tay trực tiếp trong Google Sheet, cột H–I của tab "CHI TIẾT DOANH THU".
+    </p>
+    <div class="tablewrap">
+      <table class="data" id="CTD_dataTable">
+        <thead id="CTD_tableHead"></thead>
+        <tbody id="CTD_tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer id="CTD_footerNote">Nguồn: Google Sheet "DOANH THU OPPO" — sheet CHI TIẾT DOANH THU</footer>
+</div>
+</section>
+
+<script>
+// ==== Tab: Chi tiết doanh thu (Shop x Model) ====
+(function(){
+
+const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
+const SHEET_NAME = 'CHI TIẾT DOANH THU';
+
+// Đúng 12 shop MWG (không gồm FPT/VTS), giữ nguyên thứ tự hiển thị
+const CTD_SHOP_LIST = [
+  'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)',
+  'TGD_TNI_GDA - Phước Đông',
+  'TGD_TNI_TBA - 145 Quốc Lộ 22',
+  'TGD_TNI_TBA - 180 Quốc Lộ 22',
+  'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)',
+  'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)',
+  'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)',
+  'ĐMM_TNI_GDA - Phước Đức B (Phước Đông)',
+  'ĐMM_TNI_TBA - An Tịnh',
+  'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)',
+  'ĐMS_TNI_TBA - 387 ĐT787B',
+  'ĐMS_TNI_TBA - An Hòa'
+];
+
+const FALLBACK_CTD_ROWS = [
+  {date:new Date(2026,8,1), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', model:'OPPO A6x', qty:2, revenue:9980000},
+  {date:new Date(2026,8,1), shop:'TGD_TNI_TBA - 145 Quốc Lộ 22', model:'OPPO Reno16 F 5G', qty:1, revenue:7990000},
+  {date:new Date(2026,8,2), shop:'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)', model:'OPPO A6x', qty:1, revenue:4990000},
+  {date:new Date(2026,8,3), shop:'TGD_TNI_GDA - Phước Đông', model:'OPPO Reno16 5G', qty:1, revenue:9990000},
+  {date:new Date(2026,8,4), shop:'ĐMS_TNI_TBA - 387 ĐT787B', model:'OPPO A6c', qty:1, revenue:3690000}
+];
+
+let CTD_ROWS = FALLBACK_CTD_ROWS;
+let CTD_IOT = {}; // shop -> giá trị IoT nhập tay từ cột H-I trong Sheet
+let CTD_chartInstance = null;
+
+function ctdFmt(n){ return Math.round(n||0).toLocaleString('vi-VN'); }
+
+function ctdParseGDate(cell){
+  if(!cell || cell.v==null) return null;
+  const m = /Date\((\d+),(\d+),(\d+)/.exec(String(cell.v));
+  if(m) return new Date(+m[1], +m[2], +m[3]);
+  return null;
+}
+
+function ctdFillFilterOptions(){
+  const shopSel = document.getElementById('CTD_shopFilter');
+  const modelSel = document.getElementById('CTD_modelFilter');
+  const curShop = shopSel.value, curModel = modelSel.value;
+  const shops = [...new Set(CTD_ROWS.map(r=>r.shop))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const models = [...new Set(CTD_ROWS.map(r=>r.model))].sort((a,b)=>a.localeCompare(b,'vi'));
+  shopSel.innerHTML = '<option value="">Tất cả shop</option>' + shops.map(s=>`<option value="${s}">${s}</option>`).join('');
+  modelSel.innerHTML = '<option value="">Tất cả model</option>' + models.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(shops.includes(curShop)) shopSel.value = curShop;
+  if(models.includes(curModel)) modelSel.value = curModel;
+}
+
+function ctdGetFiltered(){
+  const dFrom = document.getElementById('CTD_dateFrom').value ? new Date(document.getElementById('CTD_dateFrom').value+'T00:00:00') : null;
+  const dTo = document.getElementById('CTD_dateTo').value ? new Date(document.getElementById('CTD_dateTo').value+'T23:59:59') : null;
+  const shop = document.getElementById('CTD_shopFilter').value;
+  const model = document.getElementById('CTD_modelFilter').value;
+  return CTD_ROWS.filter(r=>{
+    if(dFrom && (!r.date || r.date < dFrom)) return false;
+    if(dTo && (!r.date || r.date > dTo)) return false;
+    if(shop && r.shop !== shop) return false;
+    if(model && r.model !== model) return false;
+    return true;
+  });
+}
+
+function ctdClearFilters(){
+  document.getElementById('CTD_dateFrom').value = '';
+  document.getElementById('CTD_dateTo').value = '';
+  document.getElementById('CTD_shopFilter').value = '';
+  document.getElementById('CTD_modelFilter').value = '';
+  ctdRender();
+}
+window.CTD_clearFilters = ctdClearFilters;
+
+function ctdRender(){
+  ctdFillFilterOptions();
+  const rows = ctdGetFiltered();
+  const models = [...new Set(CTD_ROWS.map(r=>r.model))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const extraShops = [...new Set(rows.map(r=>r.shop))].filter(s=>!CTD_SHOP_LIST.includes(s));
+  const orderedShops = CTD_SHOP_LIST.concat(extraShops);
+
+  const pivot = orderedShops.map(shop=>{
+    const shopRows = rows.filter(r=>r.shop===shop);
+    const byModel = models.map(m=> shopRows.filter(r=>r.model===m).reduce((s,r)=>s+r.revenue,0));
+    const total = byModel.reduce((a,b)=>a+b,0);
+    return {shop, byModel, total, iot: (CTD_IOT[shop]!=null ? CTD_IOT[shop] : null)};
+  });
+
+  const grandTotal = pivot.reduce((s,p)=>s+p.total,0);
+  const modelTotals = models.map((m,i)=> pivot.reduce((s,p)=>s+p.byModel[i],0));
+  const topIdx = modelTotals.length ? modelTotals.indexOf(Math.max(...modelTotals)) : -1;
+  const shopsWithRevenue = pivot.filter(p=>p.total>0).length;
+
+  document.getElementById('CTD_statsRow').innerHTML = `
+    <div class="stat gold"><div class="label">Tổng doanh thu OPPO</div><div class="value">${ctdFmt(grandTotal)} đ</div></div>
+    <div class="stat teal"><div class="label">Model bán chạy nhất</div><div class="value">${topIdx>=0 && grandTotal ? models[topIdx].replace('OPPO ','') : '—'}</div></div>
+    <div class="stat"><div class="label">Shop có doanh thu</div><div class="value">${shopsWithRevenue} / ${orderedShops.length}</div></div>
+  `;
+
+  try{
+    if(CTD_chartInstance) CTD_chartInstance.destroy();
+    CTD_chartInstance = new Chart(document.getElementById('CTD_mainChart'), {
+      type:'bar',
+      data:{ labels:models.map(m=>m.replace('OPPO ','')), datasets:[{ data:modelTotals, backgroundColor:'#0F9488', borderRadius:4 }] },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> ctdFmt(c.parsed.y) + ' đ'}} },
+        scales:{ x:{ ticks:{color:'#64748B'}, grid:{display:false} }, y:{ ticks:{color:'#64748B', callback:(v)=>ctdFmt(v)}, grid:{color:'rgba(15,23,42,0.08)'}, beginAtZero:true } }
+      }
+    });
+  }catch(chartErr){ console.error('Không vẽ được biểu đồ:', chartErr); const cv=document.getElementById('CTD_mainChart'); if(cv&&cv.parentElement) cv.parentElement.innerHTML='<div class="empty">Không tải được thư viện biểu đồ (kiểm tra kết nối mạng). Số liệu bảng bên dưới vẫn đầy đủ.</div>'; }
+
+  document.getElementById('CTD_tableHead').innerHTML = `
+    <tr>
+      <th>Shop</th>
+      ${models.map(m=>`<th class="num">${m.replace('OPPO ','')}</th>`).join('')}
+      <th class="num">TOTAL</th>
+      <th class="num" title="Nhập tay trực tiếp trong Google Sheet">IoT (nhập tay)</th>
+    </tr>`;
+  const body = document.getElementById('CTD_tableBody');
+  if(pivot.length===0){
+    body.innerHTML = `<tr><td colspan="${models.length+3}"><div class="empty">Không có dữ liệu phù hợp.</div></td></tr>`;
+  } else {
+    let html = pivot.map(p=>`
+      <tr>
+        <td>${p.shop}</td>
+        ${p.byModel.map(v=>`<td class="num">${v ? ctdFmt(v)+' đ' : '—'}</td>`).join('')}
+        <td class="num" style="font-weight:600;">${ctdFmt(p.total)} đ</td>
+        <td class="num" style="color:var(--muted);">${p.iot!=null ? ctdFmt(p.iot)+' đ' : '—'}</td>
+      </tr>
+    `).join('');
+    html += `
+      <tr class="total-row">
+        <td>TỔNG</td>
+        ${modelTotals.map(v=>`<td class="num">${ctdFmt(v)} đ</td>`).join('')}
+        <td class="num">${ctdFmt(grandTotal)} đ</td>
+        <td class="num">—</td>
+      </tr>`;
+    body.innerHTML = html;
+  }
+}
+
+['CTD_dateFrom','CTD_dateTo','CTD_shopFilter','CTD_modelFilter'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', ctdRender);
+});
+
+// Cấu trúc tab "CHI TIẾT DOANH THU" trong Google Sheet:
+// Khối chi tiết (để lọc theo ngày/shop/model): A NGÀY | B MÃ SIÊU THỊ | C SIÊU THỊ | D MODEL | E SỐ LƯỢNG | F DOANH THU
+// Khối nhập tay IoT (cách 1 cột trống ở G): H SHOP | I IOT (nhập tay) — không tự tính, người dùng gõ tay trong Sheet
+function ctdParseData(json){
+  const rows = json.table.rows;
+  const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
+  const out = [];
+  const iotMap = {};
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    const sieuThi = cell(r,2) && cell(r,2).v!=null ? String(cell(r,2).v).trim() : '';
+    if(sieuThi){
+      const date = ctdParseGDate(cell(r,0));
+      const model = cell(r,3) && cell(r,3).v!=null ? String(cell(r,3).v).trim() : '';
+      const qtyCell = cell(r,4);
+      const qty = qtyCell && typeof qtyCell.v==='number' ? qtyCell.v : 0;
+      const revCell = cell(r,5);
+      const revenue = revCell && typeof revCell.v==='number' ? revCell.v : 0;
+      out.push({date, shop:sieuThi, model, qty, revenue});
+    }
+    const iotShop = cell(r,7) && cell(r,7).v!=null ? String(cell(r,7).v).trim() : '';
+    if(iotShop){
+      const iotCell = cell(r,8);
+      iotMap[iotShop] = (iotCell && typeof iotCell.v==='number') ? iotCell.v : null;
+    }
+  }
+  if(out.length===0 && Object.keys(iotMap).length===0) throw new Error('Không đọc được dữ liệu CHI TIẾT DOANH THU');
+  return { rows: out, iotMap };
+}
+
+let CTD_jsonpCounter = 0;
+function ctdLoadData(){
+  document.getElementById('CTD_syncDot').classList.remove('off');
+  document.getElementById('CTD_syncText').textContent = 'Đang đồng bộ…';
+
+  const cbName = 'sheetCb_ctd_' + (CTD_jsonpCounter++);
+  const timeout = setTimeout(()=>{ ctdHandleFail('Hết thời gian chờ phản hồi từ Google Sheet.'); }, 15000);
+
+  window[cbName] = function(json){
+    clearTimeout(timeout);
+    try{
+      if(json.status === 'error') throw new Error('Sheet trả về lỗi — kiểm tra quyền chia sẻ.');
+      const parsed = ctdParseData(json);
+      CTD_ROWS = parsed.rows.length ? parsed.rows : FALLBACK_CTD_ROWS;
+      CTD_IOT = parsed.iotMap;
+      document.getElementById('CTD_syncDot').classList.remove('off');
+      document.getElementById('CTD_syncText').textContent = 'Đã đồng bộ trực tiếp';
+      document.getElementById('CTD_footerNote').innerHTML =
+        `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
+      ctdRender();
+    }catch(e){
+      ctdHandleFail(e.message);
+    }
+    delete window[cbName];
+    script.remove();
+  };
+
+  const script = document.createElement('script');
+  script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&tqx=out:json;responseHandler:${cbName}&t=${Date.now()}`;
+  script.onerror = ()=>{ clearTimeout(timeout); ctdHandleFail('Không thể kết nối tới Google Sheet.'); };
+  document.body.appendChild(script);
+}
+
+function ctdHandleFail(msg){
+  document.getElementById('CTD_syncDot').classList.add('off');
+  document.getElementById('CTD_syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
+  document.getElementById('CTD_footerNote').innerHTML =
+    `${msg} Kiểm tra tên tab trong Sheet có đúng là "CHI TIẾT DOANH THU" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
+  CTD_ROWS = FALLBACK_CTD_ROWS;
+  CTD_IOT = {};
+  ctdRender();
+}
+
+window.CTD_loadData = ctdLoadData;
+window.CTD_refresh = ctdRender;
+ctdRender();
+ctdLoadData();
+
+})();
+</script>
+
 <script>
 // ==== Chuyển tab ====
 (function(){
-  const REFRESH = { tp:'TP_refresh', sb:'SB_refresh', dt:'DT_refresh', cn:'CN_refresh' };
+  const REFRESH = { tp:'TP_refresh', sb:'SB_refresh', dt:'DT_refresh', cn:'CN_refresh', ctd:'CTD_refresh' };
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const tab = btn.dataset.tab;
@@ -633,7 +972,7 @@ function APP_exportAll(){
   }
   const wb = XLSX.utils.book_new();
   let any = false;
-  [['TP_dataTable','Thi phan'], ['SB_dataTable','So ban ngay moi'], ['DT_dataTable','Tien do doanh thu']].forEach(([id,name])=>{
+  [['TP_dataTable','Thi phan'], ['SB_dataTable','So ban ngay moi'], ['DT_dataTable','Tien do doanh thu'], ['CTD_dataTable','Chi tiet doanh thu']].forEach(([id,name])=>{
     const el = document.getElementById(id);
     if(el && el.querySelector('tbody') && el.querySelector('tbody').children.length){
       try{ XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(el), name); any = true; }catch(e){ console.error(e); }
