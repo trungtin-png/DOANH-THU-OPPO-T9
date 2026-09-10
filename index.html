@@ -308,59 +308,61 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
 @media(max-width:700px){
   .topbar-actions{ margin-left:0; }
 }
+
+/* ==== Thanh trạng thái đồng bộ nổi bật (loading spinner + "cập nhật lúc") ==== */
+.global-status{
+  position:sticky; top:0; z-index:40;
+  display:flex; align-items:center; gap:8px;
+  padding:8px 24px; font-size:12.5px; font-weight:600;
+  font-family:'Inter',sans-serif; letter-spacing:0.01em;
+  transition:background .25s ease, color .25s ease;
+}
+.global-status.loading{ background:#FEF3C7; color:#92400E; }
+.global-status.ok{ background:#DCFCE7; color:#166534; }
+.global-status.error{ background:#FEE2E2; color:#991B1B; }
+.gs-spinner{
+  display:none; width:13px; height:13px; border-radius:50%;
+  border:2px solid rgba(0,0,0,0.18); border-top-color:currentColor;
+  animation:gs-spin .7s linear infinite;
+}
+.global-status.loading .gs-spinner{ display:inline-block; }
+.gs-icon{ display:none; font-size:13px; line-height:1; }
+.global-status.ok .gs-icon{ display:inline-block; }
+.global-status.ok .gs-icon::before{ content:'✓'; }
+.global-status.error .gs-icon{ display:inline-block; }
+.global-status.error .gs-icon::before{ content:'⚠'; }
+@keyframes gs-spin{ to{ transform:rotate(360deg); } }
+@media(max-width:700px){
+  .global-status{ padding:8px 16px; font-size:11.5px; }
+}
+
+/* ==== Ghim cột đầu (Shop) khi cuộn ngang bảng trên mobile ==== */
+/* Áp dụng cho mọi bảng .data: TP/SB (cột "Shop"), DT (cột "Tên shop"),
+   CN (cột đầu là "Ngày" — xem thêm quy tắc riêng bên dưới để ghim luôn cột Shop kế tiếp). */
+table.data thead tr:first-child th:first-child, table.data tbody td:first-child{
+  position:sticky; left:0; z-index:2;
+  background:var(--panel);
+  box-shadow: 2px 0 5px rgba(15,23,42,0.08);
+}
+table.data thead tr:first-child th:first-child{ z-index:4; } /* ô góc: ghim cả ngang lẫn dọc (bảng CN) */
+table.data tbody tr:hover td:first-child{ background:var(--panel-alt); }
+tr.total-row td:first-child{ background:var(--panel-alt); }
+/* Giữ đúng màu đỏ nhạt "Thua đối thủ" trên cả ô đã ghim, thay rgba bằng màu đặc để không bị trong suốt khi đè lên nội dung cuộn qua */
+tr.row-lose td:first-child{ background:#FCEEEE; }
+tr.row-lose:hover td:first-child{ background:#FAE1E1; }
+
+/* CN: cột 1 "Ngày" cố định chiều rộng để cột 2 "Shop" ghim liền kề đúng vị trí */
+#CN_dataTable th:nth-child(1), #CN_dataTable td:nth-child(1){ min-width:150px; max-width:150px; }
+#CN_dataTable th:nth-child(2), #CN_dataTable td:nth-child(2){
+  position:sticky; left:150px; z-index:3;
+  background:var(--panel);
+  box-shadow: 2px 0 5px rgba(15,23,42,0.08);
+}
+#CN_dataTable thead th:nth-child(2){ z-index:4; }
+#CN_dataTable tbody tr:hover td:nth-child(2){ background:var(--panel-alt); }
 </style>
 </head>
 <body>
-
-<div id="pwGate" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:32px 28px;max-width:340px;width:100%;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
-    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;margin-bottom:4px;">OPPO Dashboard</div>
-    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Nhập mật khẩu để xem dashboard</p>
-    <input type="password" id="pwInput" placeholder="Mật khẩu" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;">
-    <div id="pwError" style="color:var(--red);font-size:12.5px;min-height:18px;margin-top:6px;"></div>
-    <button id="pwSubmit" style="width:100%;margin-top:8px;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Vào Dashboard</button>
-  </div>
-</div>
-<script>
-(function(){
-  const HASH = 'd6780e8ef3500695b785957d0ae8b2a4fbbed5249ab999643b8bdd46c1605e2d';
-  const gate = document.getElementById('pwGate');
-  const input = document.getElementById('pwInput');
-  const err = document.getElementById('pwError');
-  const btn = document.getElementById('pwSubmit');
-
-  async function sha256Hex(text){
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
-  function unlock(){
-    gate.style.display = 'none';
-    sessionStorage.setItem('oppo_dash_unlocked', '1');
-  }
-
-  if(sessionStorage.getItem('oppo_dash_unlocked') === '1'){
-    unlock();
-  }
-
-  async function tryUnlock(){
-    const v = input.value;
-    if(!v){ err.textContent = 'Vui lòng nhập mật khẩu.'; return; }
-    try{
-      const h = await sha256Hex(v);
-      if(h === HASH){ err.textContent=''; unlock(); }
-      else { err.textContent = 'Sai mật khẩu, thử lại.'; input.value=''; input.focus(); }
-    }catch(e){
-      // Trình duyệt cũ không hỗ trợ crypto.subtle (hiếm) — không chặn người dùng vì lỗi kỹ thuật
-      console.error(e); unlock();
-    }
-  }
-
-  btn.addEventListener('click', tryUnlock);
-  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
-})();
-</script>
-
 
 <div class="topbar">
   <div class="brand">OPPO Dashboard</div>
@@ -374,6 +376,74 @@ tr.row-lose td:first-child{ border-left:3px solid var(--red); }
     <button class="io-btn io-export-all" id="masterExportBtn" onclick="APP_exportAll()" title="Xuất toàn bộ 4 tab đang hiển thị ra 1 file Excel nhiều sheet">⬇ Xuất Excel (tất cả)</button>
   </div>
 </div>
+
+<div id="globalStatusBar" class="global-status loading">
+  <span class="gs-spinner" id="gsSpinner" aria-hidden="true"></span>
+  <span class="gs-icon" id="gsIcon" aria-hidden="true"></span>
+  <span id="gsText">Đang tải dữ liệu từ Google Sheet…</span>
+</div>
+
+<script>
+// ==== Thanh trạng thái đồng bộ toàn cục (4 tab: tp, sb, dt, cn) ====
+// Mỗi tab tự báo về đây khi bắt đầu tải (GLOBAL_reportLoading) và khi xong
+// (GLOBAL_reportSync, ok=true/false). Thanh trên cùng hiển thị trạng thái
+// tổng hợp: đang tải -> xong hết (giờ đồng bộ mới nhất) -> có lỗi.
+(function(){
+  var TAB_LABELS = { tp:'Thị phần', sb:'Số bán ngày mới', dt:'Tiến độ doanh thu', cn:'Chi tiết ngày' };
+  var state = { tp:null, sb:null, dt:null, cn:null }; // null=đang tải, true=ok, false=lỗi/mẫu
+  var lastSyncTime = { tp:null, sb:null, dt:null, cn:null };
+
+  function fmtNow(){
+    var d = new Date();
+    var pad = function(n){ return String(n).padStart(2,'0'); };
+    return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+' — '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
+  }
+
+  function render(){
+    var bar = document.getElementById('globalStatusBar');
+    var text = document.getElementById('gsText');
+    var keys = Object.keys(state);
+    var stillLoading = keys.filter(function(k){ return state[k]===null; });
+
+    if (stillLoading.length){
+      bar.className = 'global-status loading';
+      var names = stillLoading.map(function(k){ return TAB_LABELS[k]; }).join(', ');
+      text.textContent = 'Đang tải dữ liệu: ' + names + '…';
+      return;
+    }
+
+    var failedKeys = keys.filter(function(k){ return state[k]===false; });
+    var okTimes = keys.filter(function(k){ return state[k]===true; }).map(function(k){ return lastSyncTime[k]; }).filter(Boolean);
+    var newest = okTimes.length ? okTimes.reduce(function(a,b){ return b>a?b:a; }) : null;
+
+    if (!failedKeys.length){
+      bar.className = 'global-status ok';
+      text.textContent = 'Đã đồng bộ toàn bộ — cập nhật lúc ' + fmtNow();
+    } else if (failedKeys.length < keys.length){
+      bar.className = 'global-status error';
+      var names2 = failedKeys.map(function(k){ return TAB_LABELS[k]; }).join(', ');
+      text.textContent = 'Đồng bộ lúc ' + fmtNow() + ' — riêng ' + names2 + ' đang dùng dữ liệu mẫu/cũ (kiểm tra kết nối hoặc quyền chia sẻ Sheet).';
+    } else {
+      bar.className = 'global-status error';
+      text.textContent = 'Không đồng bộ được với Google Sheet — toàn bộ dashboard đang hiển thị dữ liệu mẫu/cũ.';
+    }
+  }
+
+  window.GLOBAL_reportLoading = function(key){
+    if (!(key in state)) return;
+    state[key] = null;
+    render();
+  };
+  window.GLOBAL_reportSync = function(key, ok){
+    if (!(key in state)) return;
+    state[key] = !!ok;
+    if (ok) lastSyncTime[key] = new Date();
+    render();
+  };
+
+  render(); // trạng thái ban đầu: đang tải cả 4 tab
+})();
+</script>
 
 <section class="tab-panel active" id="tab-tp">
 <div class="wrap">
@@ -1053,6 +1123,7 @@ let jsonpCounter = 0;
 function loadData(){
   document.getElementById('TP_syncDot').classList.remove('off');
   document.getElementById('TP_syncText').textContent = 'Đang đồng bộ…';
+  GLOBAL_reportLoading('tp');
 
   const cbName = 'sheetCb_' + (jsonpCounter++);
   const timeout = setTimeout(()=>{ handleFail('Hết thời gian chờ phản hồi từ Google Sheet.'); }, 15000);
@@ -1064,6 +1135,7 @@ function loadData(){
       TP_SEGMENTS = parseThiPhan(json);
       document.getElementById('TP_syncDot').classList.remove('off');
       document.getElementById('TP_syncText').textContent = 'Đã đồng bộ trực tiếp';
+      GLOBAL_reportSync('tp', true);
       document.getElementById('TP_footerNote').innerHTML =
         `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
       render();
@@ -1082,6 +1154,7 @@ function loadData(){
 
 function handleFail(msg){
   document.getElementById('TP_syncDot').classList.add('off');
+  GLOBAL_reportSync('tp', false);
   document.getElementById('TP_syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
   document.getElementById('TP_footerNote').innerHTML =
     `${msg} Kiểm tra tên tab trong Sheet có đúng là "THỊ PHẦN" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
@@ -1227,6 +1300,7 @@ let SB_jsonpCounter = 0;
 function loadData(){
   document.getElementById('SB_syncDot').classList.remove('off');
   document.getElementById('SB_syncText').textContent = 'Đang đồng bộ…';
+  GLOBAL_reportLoading('sb');
 
   const cbName = 'sheetCb_sb_' + (SB_jsonpCounter++);
   const timeout = setTimeout(()=>{ handleFail('Hết thời gian chờ phản hồi từ Google Sheet.'); }, 15000);
@@ -1238,6 +1312,7 @@ function loadData(){
       SB_ROWS = parseSoBanNgay(json);
       document.getElementById('SB_syncDot').classList.remove('off');
       document.getElementById('SB_syncText').textContent = 'Đã đồng bộ trực tiếp';
+      GLOBAL_reportSync('sb', true);
       document.getElementById('SB_footerNote').innerHTML =
         `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
       render();
@@ -1256,6 +1331,7 @@ function loadData(){
 
 function handleFail(msg){
   document.getElementById('SB_syncDot').classList.add('off');
+  GLOBAL_reportSync('sb', false);
   document.getElementById('SB_syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
   document.getElementById('SB_footerNote').innerHTML =
     `${msg} Kiểm tra tên tab trong Sheet có đúng là "SỐ BÁN NGÀY MỚI" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
@@ -1470,6 +1546,7 @@ let jsonpCounter = 0;
 function loadData(){
   document.getElementById('DT_syncDot').classList.remove('off');
   document.getElementById('DT_syncText').textContent = 'Đang đồng bộ…';
+  GLOBAL_reportLoading('dt');
 
   const cbName = 'sheetCb_' + (jsonpCounter++);
   const timeout = setTimeout(()=>{ handleFail('Hết thời gian chờ phản hồi từ Google Sheet.'); }, 12000);
@@ -1483,6 +1560,7 @@ function loadData(){
       currentHeso = parsed.heso;
       document.getElementById('DT_syncDot').classList.remove('off');
       document.getElementById('DT_syncText').textContent = 'Đã đồng bộ trực tiếp';
+      GLOBAL_reportSync('dt', true);
       document.getElementById('DT_footerNote').innerHTML =
         `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
       render();
@@ -1501,6 +1579,7 @@ function loadData(){
 
 function handleFail(msg){
   document.getElementById('DT_syncDot').classList.add('off');
+  GLOBAL_reportSync('dt', false);
   document.getElementById('DT_syncText').textContent = 'Dùng dữ liệu snapshot (chưa đồng bộ)';
   document.getElementById('DT_footerNote').innerHTML =
     `${msg} Kiểm tra tên tab trong Sheet có đúng là "DT T9" không, và Sheet đã bật chia sẻ "Bất kỳ ai có đường liên kết – Người xem". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
@@ -1886,6 +1965,7 @@ function applyImportedRows(parsed, fileName){
   if(!parsed.length) throw new Error('Không đọc được dòng dữ liệu hợp lệ nào trong tệp.');
   ROWS = parsed;
   document.getElementById('CN_syncDot').classList.add('off');
+  GLOBAL_reportSync('cn', false);
   document.getElementById('CN_syncText').textContent = `Đã nhập ${parsed.length} dòng từ tệp`;
   document.getElementById('CN_footerNote').innerHTML =
     `Dữ liệu nhập thủ công từ tệp "${fileName}" · ${new Date().toLocaleTimeString('vi-VN')} · <a href="javascript:void(0)" onclick="CN_loadData()">Đồng bộ lại từ Google Sheet ↗</a>`;
@@ -1976,6 +2056,7 @@ let jsonpCounter = 0;
 function loadData(){
   document.getElementById('CN_syncDot').classList.remove('off');
   document.getElementById('CN_syncText').textContent = 'Đang đồng bộ…';
+  GLOBAL_reportLoading('cn');
 
   const cbName = 'sheetCb_' + (jsonpCounter++);
   const timeout = setTimeout(()=>{ handleFail('Hết thời gian chờ phản hồi từ Google Sheet.'); }, 15000);
@@ -1987,6 +2068,7 @@ function loadData(){
       ROWS = parseChiTietNgay(json);
       document.getElementById('CN_syncDot').classList.remove('off');
       document.getElementById('CN_syncText').textContent = 'Đã đồng bộ trực tiếp';
+      GLOBAL_reportSync('cn', true);
       document.getElementById('CN_footerNote').innerHTML =
         `Đồng bộ trực tiếp từ Google Sheet · cập nhật lúc ${new Date().toLocaleTimeString('vi-VN')} · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet để chỉnh sửa ↗</a>`;
       render();
@@ -2005,6 +2087,7 @@ function loadData(){
 
 function handleFail(msg){
   document.getElementById('CN_syncDot').classList.add('off');
+  GLOBAL_reportSync('cn', false);
   document.getElementById('CN_syncText').textContent = 'Dùng dữ liệu mẫu (chưa đồng bộ)';
   document.getElementById('CN_footerNote').innerHTML =
     `${msg} Kiểm tra tên tab trong Sheet có đúng là "RAW_DATA" không, và Sheet đã bật chia sẻ "Anyone with the link". <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" rel="noopener">Mở Sheet ↗</a>`;
