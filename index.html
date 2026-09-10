@@ -364,6 +364,55 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
 </head>
 <body>
 
+<div id="pwGate" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:32px 28px;max-width:340px;width:100%;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;margin-bottom:4px;">OPPO Dashboard</div>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Nhập mật khẩu để xem dashboard</p>
+    <input type="password" id="pwInput" placeholder="Mật khẩu" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;">
+    <div id="pwError" style="color:var(--red);font-size:12.5px;min-height:18px;margin-top:6px;"></div>
+    <button id="pwSubmit" style="width:100%;margin-top:8px;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">Vào Dashboard</button>
+  </div>
+</div>
+<script>
+(function(){
+  const HASH = 'd6780e8ef3500695b785957d0ae8b2a4fbbed5249ab999643b8bdd46c1605e2d';
+  const gate = document.getElementById('pwGate');
+  const input = document.getElementById('pwInput');
+  const err = document.getElementById('pwError');
+  const btn = document.getElementById('pwSubmit');
+
+  async function sha256Hex(text){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function unlock(){
+    gate.style.display = 'none';
+    sessionStorage.setItem('oppo_dash_unlocked', '1');
+  }
+
+  if(sessionStorage.getItem('oppo_dash_unlocked') === '1'){
+    unlock();
+  }
+
+  async function tryUnlock(){
+    const v = input.value;
+    if(!v){ err.textContent = 'Vui lòng nhập mật khẩu.'; return; }
+    try{
+      const h = await sha256Hex(v);
+      if(h === HASH){ err.textContent=''; unlock(); }
+      else { err.textContent = 'Sai mật khẩu, thử lại.'; input.value=''; input.focus(); }
+    }catch(e){
+      // Trình duyệt cũ không hỗ trợ crypto.subtle (hiếm) — không chặn người dùng vì lỗi kỹ thuật
+      console.error(e); unlock();
+    }
+  }
+
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
+})();
+</script>
+
 <div class="topbar">
   <div class="brand">OPPO Dashboard</div>
   <nav class="tabs">
