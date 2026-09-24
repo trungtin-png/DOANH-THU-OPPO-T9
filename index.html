@@ -364,6 +364,14 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
 }
 #CN_dataTable thead th:nth-child(2){ z-index:4; }
 #CN_dataTable tbody tr:hover td:nth-child(2){ background:var(--panel-alt); }
+
+/* ==== Nút mắt xem chi tiết model/người bán (THỊ PHẦN, SỐ BÁN NGÀY MỚI) ==== */
+.eye-btn{
+  background:none; border:none; cursor:pointer; padding:1px 5px; margin-left:6px;
+  font-size:13px; opacity:0.5; vertical-align:middle; border-radius:5px;
+  transition:opacity .15s, background .15s;
+}
+.eye-btn:hover{ opacity:1; background:var(--panel-alt); }
 </style>
 </head>
 <body>
@@ -416,6 +424,19 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
   input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryUnlock(); });
 })();
 </script>
+
+<div id="rawmwgModal" style="position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this) RAWMWG_closeModal();">
+  <div style="background:var(--panel);border-radius:14px;max-width:640px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 12px 32px rgba(15,23,42,0.18);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--border);">
+      <div>
+        <div id="rawmwgModalTitle" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;"></div>
+        <div id="rawmwgModalSub" style="font-size:12.5px;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <button type="button" onclick="RAWMWG_closeModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1;padding:2px 6px;flex-shrink:0;">✕</button>
+    </div>
+    <div id="rawmwgModalBody" style="padding:16px 20px;overflow-y:auto;"></div>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="brand">OPPO Dashboard</div>
@@ -846,6 +867,236 @@ window.APP_todayStr = APP_todayStr;
 </script>
 
 <script>
+// ==== Chi tiết Model / Người bán (dùng chung cho THỊ PHẦN & SỐ BÁN NGÀY MỚI) ====
+// Nguồn: tab "RAW_MWG" trên Google Sheet (dữ liệu giao dịch chi tiết).
+(function(){
+  const RAWMWG_SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
+  const RAWMWG_SHEET_NAME = 'RAW_MWG';
+  let RAWMWG_ROWS = null;   // null = chưa tải; mảng = đã tải (có thể rỗng)
+  let RAWMWG_ERROR = null;
+  let RAWMWG_LOADING = false;
+  let RAWMWG_CALLBACKS = [];
+
+  // Cột trong RAW_MWG (0-indexed theo gviz), đúng thứ tự Excel Raw_MWG:
+  // 0 LOẠI SHOP | 1 MÃ TỈNH | 2 MIỀN | 3 KHU VỰC | 4 TỈNH | 5 PHÂN KHÚC | 6 Thương hiệu |
+  // 7 Loại YCX | 8 Người tạo | 9 Ngày xuất hàng | 10 Mã siêu thị xuất hàng | 11 Siêu thị xuất |
+  // 12 Tên sản phẩm | 13 Số lượng | 14 Giá bán | 15 Nhà sản xuất | 16 Trạng thái hồ sơ
+  const SEGMENT_ALIAS = {
+    '<3M':'<3M','3-5M':'3M-5M','3M-5M':'3M-5M','5-7M':'5M-7M','5M-7M':'5M-7M',
+    '7-10M':'7M-10M','7M-10M':'7M-10M','10-15M':'10M-15M','10M-15M':'10M-15M',
+    '15-20M':'15M-20M','15M-20M':'15M-20M','20-30M':'20M-30M','20M-30M':'20M-30M',
+    '>30M':'>=30M','>=30M':'>=30M'
+  };
+  function normSegment(v){
+    const s = String(v||'').trim().toUpperCase().replace(/\s+/g,'');
+    return SEGMENT_ALIAS.hasOwnProperty(s) ? SEGMENT_ALIAS[s] : null;
+  }
+  const RAWMWG_BRANDS = ['OPPO','SAMSUNG','VIVO','REALME','XIAOMI','IPHONE','OTHER'];
+  const RAWMWG_BRAND_COLORS = {OPPO:'#0F9D8B', SAMSUNG:'#2563EB', VIVO:'#7C3AED', REALME:'#F97316', XIAOMI:'#CA8A04', IPHONE:'#334155', OTHER:'#94A3B8'};
+  function normBrand(v){
+    const s = String(v||'').trim().toUpperCase();
+    if(s==='OPPO') return 'OPPO';
+    if(s==='SAMSUNG') return 'SAMSUNG';
+    if(s==='VIVO') return 'VIVO';
+    if(s==='REALME') return 'REALME';
+    if(s==='XIAOMI') return 'XIAOMI';
+    if(s==='APPLE'||s==='IPHONE') return 'IPHONE';
+    return 'OTHER';
+  }
+  function parseGDateCell(cell){
+    if(!cell || cell.v==null) return null;
+    const m = /Date\((\d+),(\d+),(\d+)/.exec(String(cell.v));
+    return m ? new Date(+m[1], +m[2], +m[3]) : null;
+  }
+  function parseRawMWG(json){
+    const rows = json.table.rows;
+    const cell = (row, idx) => (row.c && row.c[idx]) ? row.c[idx] : null;
+    const out = [];
+    for(let i=0;i<rows.length;i++){
+      const r = rows[i];
+      const shop = cell(r,11) && cell(r,11).v!=null ? String(cell(r,11).v).trim() : '';
+      if(!shop) continue;
+      out.push({
+        shop,
+        seller: cell(r,8) && cell(r,8).v!=null ? String(cell(r,8).v).trim() : '(không rõ)',
+        date: parseGDateCell(cell(r,9)),
+        product: cell(r,12) && cell(r,12).v!=null ? String(cell(r,12).v).trim() : '(không rõ)',
+        qty: cell(r,13) && typeof cell(r,13).v==='number' ? cell(r,13).v : 0,
+        segment: normSegment(cell(r,5) && cell(r,5).v),
+        brand: normBrand(cell(r,15) && cell(r,15).v)
+      });
+    }
+    return out;
+  }
+  function ensureLoaded(cb){
+    if(RAWMWG_ROWS !== null){ cb(RAWMWG_ROWS, RAWMWG_ERROR); return; }
+    RAWMWG_CALLBACKS.push(cb);
+    if(RAWMWG_LOADING) return;
+    RAWMWG_LOADING = true;
+
+    const cbName = 'sheetCb_rawmwg_' + Date.now();
+    const timeout = setTimeout(()=>{ finish([], 'Hết thời gian chờ phản hồi từ Google Sheet.'); }, 20000);
+    function finish(rows, err){
+      RAWMWG_LOADING = false;
+      RAWMWG_ROWS = rows;
+      RAWMWG_ERROR = err;
+      const cbs = RAWMWG_CALLBACKS; RAWMWG_CALLBACKS = [];
+      cbs.forEach(f=>f(rows, err));
+    }
+    window[cbName] = function(json){
+      clearTimeout(timeout);
+      try{
+        if(json.status === 'error') throw new Error('Sheet trả về lỗi — kiểm tra tên tab "RAW_MWG" và quyền chia sẻ.');
+        const parsed = parseRawMWG(json);
+        finish(parsed, parsed.length ? null : 'Tab RAW_MWG chưa có dữ liệu.');
+      }catch(e){ finish([], e.message); }
+      delete window[cbName];
+      s.remove();
+    };
+    const s = document.createElement('script');
+    s.src = `https://docs.google.com/spreadsheets/d/${RAWMWG_SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(RAWMWG_SHEET_NAME)}&tqx=out:json;responseHandler:${cbName}&t=${Date.now()}`;
+    s.onerror = ()=>{ clearTimeout(timeout); finish([], 'Không thể kết nối tới Google Sheet.'); };
+    document.body.appendChild(s);
+  }
+  function getLatestDate(rows){
+    let max = null;
+    rows.forEach(r=>{ if(r.date && (!max || r.date>max)) max = r.date; });
+    return max;
+  }
+
+  // Nút mắt để chèn vào ô tên shop. mode: 'month' (THỊ PHẦN) | 'latest' (SỐ BÁN NGÀY MỚI).
+  // segmentFilter: null = tất cả phân khúc trừ <3M; hoặc tên 1 phân khúc cụ thể.
+  // Chuẩn hoá nhãn phân khúc LẤY TỪ SHEET (vd "PHÂN KHÚC 3M - 5M", "PHÂN KHÚC >=30M")
+  // sang đúng dạng chuẩn dùng để so khớp với cột PHÂN KHÚC trong Raw_MWG (vd "3M-5M").
+  // "PHÂN KHÚC TỔNG" (không có khúc giá) -> trả về null (không lọc theo phân khúc).
+  window.RAWMWG_normSegLabel = function(label){
+    if(!label) return null;
+    const upper = String(label).trim().toUpperCase();
+    if(upper.indexOf('TỔNG') !== -1) return null;
+    const compact = upper.replace(/PHÂN\s*KHÚC/g,'').replace(/\s+/g,'');
+    return normSegment(compact); // dùng lại bảng quy đổi đã có (SEGMENT_ALIAS)
+  };
+
+  window.RAWMWG_eyeBtn = function(shop, mode, segmentFilter){
+    const shopEsc = shop.replace(/'/g, "\\'");
+    const segArg = segmentFilter ? `'${String(segmentFilter).replace(/'/g,"\\'")}'` : 'null';
+    return `<button type="button" class="eye-btn" title="Xem chi tiết model &amp; người bán" onclick="event.stopPropagation();RAWMWG_openDetail('${shopEsc}','${mode}',${segArg})">👁️</button>`;
+  };
+
+  window.RAWMWG_openDetail = function(shop, mode, segmentFilter){
+    const modal = document.getElementById('rawmwgModal');
+    const body = document.getElementById('rawmwgModalBody');
+    const title = document.getElementById('rawmwgModalTitle');
+    const sub = document.getElementById('rawmwgModalSub');
+    title.textContent = shop;
+    sub.textContent = '';
+    body.innerHTML = '<div class="empty">Đang tải dữ liệu chi tiết…</div>';
+    modal.style.display = 'flex';
+
+    ensureLoaded((allRows, err)=>{
+      if(err && allRows.length===0){
+        body.innerHTML = `<div class="empty">Không tải được dữ liệu chi tiết: ${err}</div>`;
+        return;
+      }
+      let rows = allRows.filter(r=>r.shop===shop);
+      const subParts = [];
+      if(mode === 'latest'){
+        const maxDate = getLatestDate(allRows);
+        if(maxDate){
+          subParts.push('Ngày ' + maxDate.toLocaleDateString('vi-VN'));
+          rows = rows.filter(r=> r.date && r.date.getFullYear()===maxDate.getFullYear() && r.date.getMonth()===maxDate.getMonth() && r.date.getDate()===maxDate.getDate());
+        }
+      } else {
+        subParts.push('Cả tháng');
+      }
+      if(segmentFilter){
+        rows = rows.filter(r=>r.segment===segmentFilter);
+        subParts.push('Phân khúc ' + segmentFilter);
+      } else {
+        rows = rows.filter(r=>r.segment !== '<3M'); // khớp cách tính PHÂN KHÚC TỔNG / SB (loại <3M)
+      }
+      sub.textContent = subParts.join(' · ');
+
+      if(rows.length===0){
+        body.innerHTML = '<div class="empty">Không có dữ liệu chi tiết cho shop này.</div>';
+        return;
+      }
+
+      const map = new Map();
+      rows.forEach(r=>{
+        const key = r.product + '||' + r.seller + '||' + r.brand;
+        if(!map.has(key)) map.set(key, {product:r.product, seller:r.seller, brand:r.brand, qty:0});
+        map.get(key).qty += r.qty;
+      });
+      const list = [...map.values()].sort((a,b)=>b.qty-a.qty);
+      const grandTotal = list.reduce((s,x)=>s+x.qty,0);
+      const brandsPresent = RAWMWG_BRANDS.filter(b=>list.some(x=>x.brand===b));
+
+      body.innerHTML = `
+        <div class="rawmwg-filters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <input type="text" id="rawmwgFilterModel" placeholder="Lọc theo model…" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+          <select id="rawmwgFilterBrand" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--panel);">
+            <option value="">Tất cả hãng</option>
+            ${brandsPresent.map(b=>`<option value="${b}">${b}</option>`).join('')}
+          </select>
+          <input type="text" id="rawmwgFilterSeller" placeholder="Lọc theo người bán…" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+          <input type="number" id="rawmwgFilterQty" placeholder="SL tối thiểu…" min="0" style="width:120px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+          <button type="button" id="rawmwgFilterClear" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel);font-size:12.5px;cursor:pointer;">Xóa lọc</button>
+        </div>
+        <div id="rawmwgSummary" style="margin-bottom:10px;font-size:13px;color:var(--muted);"></div>
+        <div class="tablewrap" style="max-height:420px;">
+          <table class="data">
+            <thead><tr><th>Model</th><th>Hãng</th><th>Người bán</th><th class="num">Số lượng</th></tr></thead>
+            <tbody id="rawmwgTbody"></tbody>
+            <tfoot><tr class="total-row"><td colspan="3">TỔNG</td><td class="num" id="rawmwgFootTotal"></td></tr></tfoot>
+          </table>
+        </div>`;
+
+      function renderFiltered(){
+        const modelQ = document.getElementById('rawmwgFilterModel').value.trim().toLowerCase();
+        const brandQ = document.getElementById('rawmwgFilterBrand').value;
+        const sellerQ = document.getElementById('rawmwgFilterSeller').value.trim().toLowerCase();
+        const minQty = Number(document.getElementById('rawmwgFilterQty').value) || 0;
+        const filtered = list.filter(x=>
+          (!modelQ || x.product.toLowerCase().includes(modelQ)) &&
+          (!brandQ || x.brand === brandQ) &&
+          (!sellerQ || x.seller.toLowerCase().includes(sellerQ)) &&
+          x.qty >= minQty
+        );
+        const shownTotal = filtered.reduce((s,x)=>s+x.qty,0);
+        const anyFilter = modelQ || brandQ || sellerQ || minQty>0;
+        document.getElementById('rawmwgSummary').innerHTML = anyFilter
+          ? `Hiển thị: <strong style="color:var(--text);">${shownTotal}</strong> máy · ${filtered.length} dòng &nbsp;(tổng gốc: ${grandTotal} máy · ${list.length} dòng)`
+          : `Tổng: <strong style="color:var(--text);">${grandTotal}</strong> máy · ${list.length} dòng model/người bán`;
+        document.getElementById('rawmwgTbody').innerHTML = filtered.length
+          ? filtered.map(x=>`<tr><td>${x.product}</td><td style="color:${RAWMWG_BRAND_COLORS[x.brand]||'inherit'}">${x.brand}</td><td>${x.seller}</td><td class="num">${x.qty}</td></tr>`).join('')
+          : '<tr><td colspan="4"><div class="empty">Không có dòng phù hợp với bộ lọc.</div></td></tr>';
+        document.getElementById('rawmwgFootTotal').textContent = shownTotal;
+      }
+
+      document.getElementById('rawmwgFilterBrand').addEventListener('change', renderFiltered);
+
+      ['rawmwgFilterModel','rawmwgFilterSeller','rawmwgFilterQty'].forEach(id=>{
+        document.getElementById(id).addEventListener('input', renderFiltered);
+      });
+      document.getElementById('rawmwgFilterClear').addEventListener('click', ()=>{
+        document.getElementById('rawmwgFilterModel').value = '';
+        document.getElementById('rawmwgFilterBrand').value = '';
+        document.getElementById('rawmwgFilterSeller').value = '';
+        document.getElementById('rawmwgFilterQty').value = '';
+        renderFiltered();
+      });
+      renderFiltered();
+    });
+  };
+
+  window.RAWMWG_closeModal = function(){
+    document.getElementById('rawmwgModal').style.display = 'none';
+  };
+})();
+</script>
+
+<script>
 (function(){
 
 const SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
@@ -1038,7 +1289,7 @@ function render(){
         const losing = rivalMax > oppoCount; // OPPO bị 1 hãng đối thủ vượt số bán
         return `
         <tr class="${losing ? 'row-lose' : ''}">
-          <td>${r.shop}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ tại shop này">Thua đối thủ</span>' : ''}</td>
+          <td>${r.shop}${RAWMWG_eyeBtn(r.shop, 'month', RAWMWG_normSegLabel(seg))}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ tại shop này">Thua đối thủ</span>' : ''}</td>
           ${r.counts.map((c,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(c)}</td>`).join('')}
           <td class="num">${fmt(r.total)}</td>
           ${r.pct.map((p,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmtPct(p)}</td>`).join('')}
@@ -1101,7 +1352,7 @@ function render(){
     } else {
       let html = enriched.map(r=>`
         <tr>
-          <td>${r.shop}</td>
+          <td>${r.shop}${RAWMWG_eyeBtn(r.shop, 'month', RAWMWG_normSegLabel(seg))}</td>
           <td class="num" style="color:${BRAND_COLORS[brand]}">${fmt(r.count)}</td>
           <td>
             <div class="progress-cell">
@@ -1305,7 +1556,7 @@ function render(){
       const losing = rivalMax > oppoCount;
       return `
       <tr class="${losing ? 'row-lose' : ''}">
-        <td>${r.shop}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ tại shop này">Thua đối thủ</span>' : ''}</td>
+        <td>${r.shop}${RAWMWG_eyeBtn(r.shop, 'latest', null)}${losing ? '<span class="lose-badge" title="OPPO đang bán thua đối thủ tại shop này">Thua đối thủ</span>' : ''}</td>
         ${r.counts.map((c,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmt(c)}</td>`).join('')}
         <td class="num">${fmt(r.total)}</td>
         ${r.pct.map((p,i)=>`<td class="num" style="color:${BRAND_COLORS[BRANDS[i]]}">${fmtPct(p)}</td>`).join('')}
