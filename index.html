@@ -457,6 +457,11 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
           const vaiTro = cell(r,2) && cell(r,2).v!=null ? String(cell(r,2).v).trim().toLowerCase() : 'nhân viên';
           out[maNV] = { hoTen, vaiTro: vaiTro==='admin' ? 'admin' : 'nhân viên' };
         }
+        // Luôn đảm bảo có tài khoản ADMIN, kể cả khi tab "NHÂN VIÊN" chưa có dòng
+        // mã ADMIN — tránh trường hợp bị khoá luôn cả quyền quản trị.
+        if(!out.hasOwnProperty('ADMIN')){
+          out['ADMIN'] = { hoTen:'Quản trị viên', vaiTro:'admin' };
+        }
         finish(Object.keys(out).length ? out : null);
       }catch(e){ finish(null); }
       delete window[cbName];
