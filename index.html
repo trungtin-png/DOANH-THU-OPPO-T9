@@ -385,6 +385,40 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
   transition:opacity .15s, background .15s;
 }
 .eye-btn:hover{ opacity:1; background:var(--panel-alt); }
+
+/* ==== Tab S.O THÁNG ==== */
+.so-filters{display:flex;flex-wrap:wrap;gap:18px 32px;align-items:flex-start;}
+.so-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.so-chip{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:999px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;user-select:none;}
+.so-chip:hover{background:var(--panel-alt);}
+.so-chip.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+.so-quick{display:flex;gap:10px;margin-top:2px;}
+.so-mini{border:none;background:none;color:var(--teal);font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit;text-decoration:underline;}
+.so-check{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;cursor:pointer;}
+.so-check input{width:16px;height:16px;}
+.so-note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.55;}
+.so-notice{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;line-height:1.55;}
+.so-notice.err{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5;}
+.so-notice ul{margin:4px 0 0 18px;padding:0;}
+.so-scope{margin:-8px 0 14px;font-size:12.5px;color:var(--muted);}
+.so-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:18px;}
+.so-card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel);}
+.so-card.latest{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
+.so-card-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;}
+.so-tag{font-size:11px;font-weight:500;color:var(--muted);background:var(--panel-alt);border-radius:6px;padding:2px 7px;font-family:'Inter',sans-serif;}
+.so-card-main{font-size:26px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--teal);line-height:1.2;}
+.so-card-main small{font-size:12.5px;font-weight:500;color:var(--muted);font-family:'Inter',sans-serif;}
+.so-card-sub{font-size:12.5px;color:var(--muted);margin-top:4px;}
+.so-card-sub b{color:var(--text);}
+.so-card-delta{font-size:12.5px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);line-height:1.6;}
+.so-up{color:#15803D;font-weight:600;}
+.so-down{color:#DC2626;font-weight:600;}
+.so-flat{color:var(--muted);}
+.so-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.so-chartbox{position:relative;height:330px;}
+.so-h3{font-size:13.5px;font-weight:600;margin:20px 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.so-hl td{background:rgba(15,148,136,0.07);}
+@media(max-width:820px){ .so-grid2{grid-template-columns:1fr;} .so-chartbox{height:300px;} }
 </style>
 </head>
 <body>
@@ -784,6 +818,7 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
     <button class="tab-btn" data-tab="sb">Số bán ngày mới</button>
     <button class="tab-btn" data-tab="dt">Tiến độ doanh thu</button>
     <button class="tab-btn" data-tab="cn">Chi tiết ngày</button>
+    <button class="tab-btn" data-tab="so">S.O THÁNG</button>
   </nav>
   <div class="topbar-actions">
     <span id="userGreeting" style="font-size:12.5px;color:var(--muted);display:none;"></span>
@@ -1179,10 +1214,676 @@ tr.row-lose:hover td:first-child{ background:#FAE1E1; }
 </div>
 </section>
 
+<section class="tab-panel" id="tab-so">
+<div class="wrap">
+
+  <header>
+    <div class="titleblock">
+      <h1>S.O THÁNG</h1>
+      <p>OPPO · so sánh sell-out, thị phần và doanh thu giữa các tháng — dữ liệu từ tab "CÁC THÁNG" (12 shop MWG)</p>
+    </div>
+    <div class="syncbox">
+      <span class="dot off" id="SO_syncDot"></span>
+      <span id="SO_syncText">Chưa tải</span>
+      <button id="SO_refreshBtn" onclick="SO_loadData()">Làm mới</button>
+    </div>
+  </header>
+
+  <div id="SO_notice"></div>
+
+  <div class="panel so-filters">
+    <div class="fgroup">
+      <span class="flabel">Tháng (chọn 1 hoặc nhiều)</span>
+      <div id="SO_monthChips" class="so-chips"></div>
+      <div class="so-quick"><button type="button" class="so-mini" id="SO_monthAll">Tất cả</button><button type="button" class="so-mini" id="SO_monthLatest">2 tháng gần nhất</button></div>
+    </div>
+    <div class="fgroup">
+      <span class="flabel">Phân khúc</span>
+      <div id="SO_segChips" class="so-chips"></div>
+      <div class="so-quick"><button type="button" class="so-mini" id="SO_seg330">3M–30M</button><button type="button" class="so-mini" id="SO_segAll">Tất cả (gồm ≥30M)</button></div>
+    </div>
+    <div class="fgroup">
+      <span class="flabel">Shop</span>
+      <select id="SO_shopSelect"></select>
+    </div>
+    <div class="fgroup" style="max-width:430px;">
+      <label class="so-check"><input type="checkbox" id="SO_sameDays" checked> So sánh cùng số ngày</label>
+      <div id="SO_rangeNote" class="so-note"></div>
+    </div>
+  </div>
+
+  <div id="SO_empty" class="panel"><div class="empty">Đang tải dữ liệu từ tab "CÁC THÁNG"… (tab này khá lớn, có thể mất vài giây)</div></div>
+
+  <div id="SO_body" style="display:none;">
+
+    <div class="panel">
+      <h2>1. Sell-out &amp; thị phần tổng theo tháng</h2>
+      <p class="so-scope" id="SO_scope1"></p>
+      <div id="SO_cards" class="so-cards"></div>
+      <div class="so-grid2">
+        <div class="so-chartbox"><canvas id="SO_chartTotal"></canvas></div>
+        <div class="so-chartbox"><canvas id="SO_chartBrand"></canvas></div>
+      </div>
+      <div class="so-h3"><span>Sell-out và thị phần theo hãng</span><button class="io-btn io-small" onclick="APP_exportTableCSV('SO_brandTable','so_thang_theo_hang')">⬇ CSV</button></div>
+      <div class="tablewrap"><table class="data" id="SO_brandTable"><thead id="SO_brandHead"></thead><tbody id="SO_brandBody"></tbody></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>2. Thị phần OPPO theo phân khúc và theo shop</h2>
+      <p class="so-scope" id="SO_scope2"></p>
+      <div class="so-chartbox"><canvas id="SO_chartSeg"></canvas></div>
+      <div class="so-h3"><span>Theo từng phân khúc</span><button class="io-btn io-small" onclick="APP_exportTableCSV('SO_segTable','so_thang_theo_phan_khuc')">⬇ CSV</button></div>
+      <div class="tablewrap"><table class="data" id="SO_segTable"><thead id="SO_segHead"></thead><tbody id="SO_segBody"></tbody></table></div>
+      <div class="so-h3"><span>Theo từng shop (trong các phân khúc đang chọn)</span><button class="io-btn io-small" onclick="APP_exportTableCSV('SO_shopTable','so_thang_theo_shop')">⬇ CSV</button></div>
+      <div class="tablewrap"><table class="data" id="SO_shopTable"><thead id="SO_shopHead"></thead><tbody id="SO_shopBody"></tbody></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>3. Doanh thu OPPO theo phân khúc và theo shop</h2>
+      <p class="so-scope" id="SO_scope3"></p>
+      <div class="so-chartbox"><canvas id="SO_chartRevSeg"></canvas></div>
+      <div class="so-h3"><span>Doanh thu từng phân khúc</span><button class="io-btn io-small" onclick="APP_exportTableCSV('SO_revSegTable','so_thang_doanh_thu_phan_khuc')">⬇ CSV</button></div>
+      <div class="tablewrap"><table class="data" id="SO_revSegTable"><thead id="SO_revSegHead"></thead><tbody id="SO_revSegBody"></tbody></table></div>
+      <div class="so-chartbox" id="SO_revShopBox" style="margin-top:22px;"><canvas id="SO_chartRevShop"></canvas></div>
+      <div class="so-h3"><span>Doanh thu tổng của từng shop</span><button class="io-btn io-small" onclick="APP_exportTableCSV('SO_revShopTable','so_thang_doanh_thu_shop')">⬇ CSV</button></div>
+      <div class="tablewrap"><table class="data" id="SO_revShopTable"><thead id="SO_revShopHead"></thead><tbody id="SO_revShopBody"></tbody></table></div>
+    </div>
+
+  </div>
+
+  <footer id="SO_footerNote">Nguồn: Google Sheet "DOANH THU OPPO" — sheet CÁC THÁNG</footer>
+</div>
+</section>
+
+<script>
+// ==== S.O THÁNG — lõi tính toán (thuần, không đụng DOM) ====
+var SOCore = (function(){
+  var SHOPS = [
+    'AAR_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)',
+    'TGD_TNI_GDA - Phước Đông',
+    'TGD_TNI_TBA - 145 Quốc Lộ 22',
+    'TGD_TNI_TBA - 180 Quốc Lộ 22',
+    'TGD_TNI_TBA - 3435 Quốc Lộ 22 (An Tịnh)',
+    'ĐML_TNI_TBA - 10 Quốc Lộ 22 (Trảng Bàng)',
+    'ĐMM_TNI_GDA - Phước Đức A (Phước Đông)',
+    'ĐMM_TNI_GDA - Phước Đức B (Phước Đông)',
+    'ĐMM_TNI_TBA - An Tịnh',
+    'ĐMS_TNI_GDA - Bàu Đồn (Đường ĐT782)',
+    'ĐMS_TNI_TBA - 387 ĐT787B',
+    'ĐMS_TNI_TBA - An Hòa'
+  ];
+  var SEGMENTS = ['3M-5M','5M-7M','7M-10M','10M-15M','15M-20M','20M-30M','>=30M'];
+  var DEFAULT_SEGS = SEGMENTS.slice(0, 6); // 3M–30M
+  var BRANDS = ['OPPO','SAMSUNG','VIVO','REALME','XIAOMI','IPHONE','OTHER'];
+
+  var SEG_ALIAS = {
+    '<3M':'<3M','3-5M':'3M-5M','3M-5M':'3M-5M','5-7M':'5M-7M','5M-7M':'5M-7M',
+    '7-10M':'7M-10M','7M-10M':'7M-10M','10-15M':'10M-15M','10M-15M':'10M-15M',
+    '15-20M':'15M-20M','15M-20M':'15M-20M','20-30M':'20M-30M','20M-30M':'20M-30M',
+    '>30M':'>=30M','>=30M':'>=30M'
+  };
+  function normSeg(v){
+    var s = String(v == null ? '' : v).trim().toUpperCase().replace(/\s+/g,'');
+    return SEG_ALIAS.hasOwnProperty(s) ? SEG_ALIAS[s] : null;
+  }
+  function normBrand(v){
+    var s = String(v == null ? '' : v).trim().toUpperCase();
+    if(s==='OPPO'||s==='SAMSUNG'||s==='VIVO'||s==='REALME'||s==='XIAOMI') return s;
+    if(s==='APPLE'||s==='IPHONE') return 'IPHONE';
+    return 'OTHER';
+  }
+  // Khoá so khớp tên shop: bỏ khác biệt Unicode (NFC/NFD), khoảng trắng, loại gạch ngang
+  function shopKey(v){
+    var s = String(v == null ? '' : v);
+    if(s.normalize) s = s.normalize('NFC');
+    return s.replace(/[\u2013\u2014]/g,'-').replace(/\s+/g,' ').trim().toLowerCase();
+  }
+  var SHOP_MAP = {};
+  SHOPS.forEach(function(s){ SHOP_MAP[shopKey(s)] = s; });
+
+  function pad(n){ return n < 10 ? '0' + n : '' + n; }
+
+  function parseDate(cell){
+    if(!cell) return null;
+    var v = cell.v;
+    if(v instanceof Date) return v;
+    var m;
+    if(typeof v === 'string'){
+      m = /^Date\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+),\s*(\d+)(?:,\s*(\d+))?)?\)/.exec(v);
+      if(m) return new Date(+m[1], +m[2], +m[3], +(m[4]||0), +(m[5]||0), +(m[6]||0));
+      m = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(v);
+      if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+    }
+    if(typeof cell.f === 'string'){
+      m = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(cell.f);
+      if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+    }
+    return null;
+  }
+  function parseNum(cell){
+    if(!cell) return 0;
+    var v = cell.v;
+    if(typeof v === 'number') return v;
+    if(typeof v === 'string'){
+      var s = v.trim();
+      if(/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g,'').replace(',','.');
+      else s = s.replace(/[^\d.\-]/g,'');
+      var n = Number(s);
+      return isNaN(n) ? 0 : n;
+    }
+    return 0;
+  }
+
+  // Đọc JSON gviz của tab "CÁC THÁNG" đã chọn cột A,F,J,L,N,O,P (theo đúng thứ tự):
+  // c[0]=LOẠI SHOP/nhãn tháng, c[1]=PHÂN KHÚC, c[2]=Ngày xuất hàng, c[3]=Siêu thị xuất,
+  // c[4]=Số lượng, c[5]=Giá bán, c[6]=Nhà sản xuất.
+  function parseSheet(json){
+    var rows = (json && json.table && json.table.rows) || [];
+    var out = [];
+    var stats = { total: rows.length, shopRows: 0, noDate: 0, kept: 0 };
+    var banner = '';
+    for(var i = 0; i < rows.length; i++){
+      var c = rows[i].c || [];
+      var a = c[0] && c[0].v != null ? String(c[0].v).trim() : '';
+      var shopRaw = c[3] && c[3].v != null ? String(c[3].v) : '';
+      if(!shopRaw.trim()){
+        var an = a.normalize ? a.normalize('NFC') : a;
+        if(/^TH[ÁA]NG\b/i.test(an)) banner = an;
+        continue;
+      }
+      if(a.toUpperCase() === 'LOẠI SHOP') continue;
+      var canon = SHOP_MAP[shopKey(shopRaw)];
+      if(!canon) continue;
+      stats.shopRows++;
+      var d = parseDate(c[2]);
+      if(!d){ stats.noDate++; continue; }
+      var y = d.getFullYear(), m = d.getMonth() + 1;
+      out.push({
+        shop: canon,
+        month: y + '-' + pad(m), y: y, m: m, day: d.getDate(),
+        seg: normSeg(c[1] && c[1].v),
+        brand: normBrand(c[6] && c[6].v),
+        qty: parseNum(c[4]),
+        price: parseNum(c[5]),
+        banner: banner
+      });
+      stats.kept++;
+    }
+    return { rows: out, stats: stats };
+  }
+
+  // Thông tin từng tháng: ngày đầu/cuối có dữ liệu, đủ tháng chưa, nhãn trong Sheet
+  function monthInfo(rows){
+    var info = {};
+    rows.forEach(function(r){
+      var o = info[r.month];
+      if(!o){
+        o = info[r.month] = { key: r.month, y: r.y, m: r.m, minDay: r.day, maxDay: r.day,
+          daysInMonth: new Date(r.y, r.m, 0).getDate(), days: {}, banners: {}, rows: 0 };
+      }
+      if(r.day < o.minDay) o.minDay = r.day;
+      if(r.day > o.maxDay) o.maxDay = r.day;
+      o.days[r.day] = true;
+      if(r.banner) o.banners[r.banner] = true;
+      o.rows++;
+    });
+    Object.keys(info).forEach(function(k){
+      var o = info[k];
+      o.dayCount = Object.keys(o.days).length;
+      o.complete = o.maxDay >= o.daysInMonth;
+    });
+    return info;
+  }
+  function sortedMonths(info){ return Object.keys(info).sort(); }
+
+  // Ngày cắt để so sánh "cùng số ngày": lấy mức phủ thấp nhất trong các tháng đang chọn.
+  // Nếu mọi tháng đều đủ -> không cắt (so cả tháng).
+  function cutoff(selected, info, sameDays){
+    if(!sameDays) return 31;
+    var allComplete = selected.every(function(k){ return info[k].complete; });
+    if(allComplete) return 31;
+    return Math.min.apply(null, selected.map(function(k){
+      return info[k].complete ? info[k].daysInMonth : info[k].maxDay;
+    }));
+  }
+
+  function zero(){ return { oppoQty: 0, totalQty: 0, oppoRev: 0 }; }
+  function add(o, r){
+    o.totalQty += r.qty;
+    if(r.brand === 'OPPO'){ o.oppoQty += r.qty; o.oppoRev += r.qty * r.price; }
+  }
+  function share(o){ return o.totalQty ? o.oppoQty / o.totalQty : 0; }
+
+  // opts: { months:[], cutoff:n, segs:[], shop:'' (rỗng = cả 12 shop) }
+  function aggregate(rows, opts){
+    var monthSet = {}, segSet = {};
+    opts.months.forEach(function(k){ monthSet[k] = true; });
+    opts.segs.forEach(function(s){ segSet[s] = true; });
+    var shops = opts.shop ? [opts.shop] : SHOPS;
+    var res = { byMonth: {}, byBrand: {}, bySeg: {}, byShop: {}, shops: shops };
+    opts.months.forEach(function(k){
+      res.byMonth[k] = zero();
+      res.byBrand[k] = {};
+      BRANDS.forEach(function(b){ res.byBrand[k][b] = 0; });
+      res.bySeg[k] = {};
+      opts.segs.forEach(function(s){ res.bySeg[k][s] = zero(); });
+      res.byShop[k] = {};
+      shops.forEach(function(sh){ res.byShop[k][sh] = zero(); });
+    });
+    rows.forEach(function(r){
+      if(!monthSet[r.month] || r.day > opts.cutoff) return;
+      if(!r.seg || !segSet[r.seg]) return;
+      if(opts.shop && r.shop !== opts.shop) return;
+      add(res.byMonth[r.month], r);
+      res.byBrand[r.month][r.brand] += r.qty;
+      add(res.bySeg[r.month][r.seg], r);
+      add(res.byShop[r.month][r.shop], r);
+    });
+    return res;
+  }
+
+  return {
+    SHOPS: SHOPS, SEGMENTS: SEGMENTS, DEFAULT_SEGS: DEFAULT_SEGS, BRANDS: BRANDS,
+    normSeg: normSeg, normBrand: normBrand, shopKey: shopKey,
+    parseDate: parseDate, parseNum: parseNum, parseSheet: parseSheet,
+    monthInfo: monthInfo, sortedMonths: sortedMonths, cutoff: cutoff,
+    aggregate: aggregate, share: share
+  };
+})();
+</script>
+<script>
+// ==== S.O THÁNG — giao diện (tải dữ liệu, bộ lọc, thẻ, biểu đồ, bảng) ====
+(function(){
+  var C = SOCore;
+  var SHEET_ID = '1_YZWAtEIbZ-dHAoO20vuVX0BuI23kKO_7QmIzxFVpSo';
+  var SHEET_NAME = 'CÁC THÁNG';
+
+  var ROWS = null, INFO = {}, MONTHS = [], loading = false, loadErr = '', STATS = null;
+  var selMonths = {}, selSegs = {}, shop = '', sameDays = true;
+  var charts = {};
+
+  var BRAND_COLORS = {OPPO:'#0F9D8B', SAMSUNG:'#2563EB', VIVO:'#7C3AED', REALME:'#F97316', XIAOMI:'#CA8A04', IPHONE:'#334155', OTHER:'#94A3B8'};
+  var PALETTE = ['#94A3B8','#0F9488','#2563EB','#7C3AED','#F97316','#CA8A04','#DB2777','#334155'];
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fmt(n){ return Math.round(n || 0).toLocaleString('vi-VN'); }
+  function pct(x, d){ return (x * 100).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; }
+  function moneyShort(n){
+    var a = Math.abs(n);
+    if(a >= 1e9) return (n / 1e9).toFixed(2).replace('.', ',') + ' tỷ';
+    if(a >= 1e6) return (n / 1e6).toFixed(1).replace('.', ',') + ' tr';
+    return fmt(n);
+  }
+  function mLabel(k){ return 'T' + INFO[k].m + '/' + INFO[k].y; }
+  function mLabelLong(k){ return 'Tháng ' + INFO[k].m + '/' + INFO[k].y; }
+  function segLabel(s){ return s.replace('>=', '≥').replace('M-', 'M–'); }
+  function mColor(i, n){
+    if(n === 1) return PALETTE[1];
+    if(n === 2) return i === 0 ? PALETTE[0] : PALETTE[1];
+    return PALETTE[i % PALETTE.length];
+  }
+
+  // ---- hiển thị chênh lệch ----
+  function dCls(v){ return v > 0 ? 'so-up' : (v < 0 ? 'so-down' : 'so-flat'); }
+  function sgn(v){ return v > 0 ? '+' : (v < 0 ? '−' : ''); }
+  function dQty(v){ return '<span class="' + dCls(v) + '">' + sgn(v) + fmt(Math.abs(v)) + '</span>'; }
+  function dPt(v){
+    var p = v * 100, flat = Math.abs(p) < 0.05;
+    return '<span class="' + (flat ? 'so-flat' : dCls(p)) + '">' + (flat ? '' : sgn(p)) + Math.abs(p).toFixed(1).replace('.', ',') + ' pt</span>';
+  }
+  function dRel(a, b){
+    if(!a) return b ? '<span class="so-up">mới</span>' : '<span class="so-flat">—</span>';
+    var r = (b - a) / a;
+    return '<span class="' + dCls(r) + '">' + sgn(r) + Math.abs(r * 100).toFixed(1).replace('.', ',') + '%</span>';
+  }
+  function dMoney(v){ return '<span class="' + dCls(v) + '">' + sgn(v) + fmt(Math.abs(v)) + ' đ</span>'; }
+
+  function selected(){ return MONTHS.filter(function(k){ return selMonths[k]; }); }
+  function selectedSegs(){ return C.SEGMENTS.filter(function(s){ return selSegs[s]; }); }
+
+  // ---- đồng bộ ----
+  function setSync(state, text){
+    var dot = $('SO_syncDot'), t = $('SO_syncText');
+    dot.classList.toggle('off', state !== 'ok');
+    t.textContent = text || (state === 'ok' ? 'Đã đồng bộ trực tiếp' : state === 'loading' ? 'Đang tải…' : 'Chưa tải được');
+  }
+
+  function load(){
+    if(loading) return;
+    loading = true; loadErr = '';
+    setSync('loading', 'Đang tải tab CÁC THÁNG…');
+    $('SO_empty').style.display = ''; $('SO_empty').innerHTML = '<div class="empty">Đang tải dữ liệu từ tab "CÁC THÁNG"… (tab này khá lớn, có thể mất vài giây)</div>';
+
+    var cb = 'sheetCb_so_' + Date.now(), done = false, s = null;
+    var timer = setTimeout(function(){ finish(null, 'Hết thời gian chờ (tab CÁC THÁNG khá lớn) — bấm "Làm mới" để thử lại.'); }, 90000);
+    function finish(json, err){
+      if(done) return; done = true; clearTimeout(timer); loading = false;
+      try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+      if(s && s.parentNode) s.parentNode.removeChild(s);
+      if(err){ loadErr = err; setSync('error', 'Không tải được'); renderAll(); return; }
+      ingest(json);
+    }
+    window[cb] = function(json){
+      if(json && json.status === 'error'){
+        var e0 = json.errors && json.errors[0];
+        finish(null, 'Sheet trả về lỗi: ' + ((e0 && (e0.detailed_message || e0.message)) || 'kiểm tra tên tab "CÁC THÁNG" và quyền chia sẻ'));
+        return;
+      }
+      finish(json);
+    };
+    s = document.createElement('script');
+    s.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?sheet=' + encodeURIComponent(SHEET_NAME) +
+      '&headers=0&tq=' + encodeURIComponent('select A,F,J,L,N,O,P') + '&tqx=out:json;responseHandler:' + cb + '&t=' + Date.now();
+    s.onerror = function(){ finish(null, 'Không kết nối được tới Google Sheet.'); };
+    document.body.appendChild(s);
+  }
+
+  function ingest(json){
+    var parsed;
+    try{ parsed = C.parseSheet(json); }catch(e){ loadErr = 'Không đọc được cấu trúc tab: ' + e.message; setSync('error', 'Lỗi dữ liệu'); renderAll(); return; }
+    STATS = parsed.stats;
+    if(!parsed.rows.length){
+      ROWS = null;
+      loadErr = 'Đọc được ' + STATS.total + ' dòng nhưng không có dòng nào thuộc 12 shop kèm ngày hợp lệ' +
+        ' (dòng thuộc 12 shop: ' + STATS.shopRows + ', thiếu/sai ngày: ' + STATS.noDate + '). Kiểm tra cột "Ngày xuất hàng" và tên shop trong tab CÁC THÁNG.';
+      setSync('error', 'Không có dữ liệu hợp lệ'); renderAll(); return;
+    }
+    ROWS = parsed.rows; loadErr = '';
+    INFO = C.monthInfo(ROWS); MONTHS = C.sortedMonths(INFO);
+    // mặc định: 2 tháng gần nhất + phân khúc 3M–30M
+    selMonths = {}; MONTHS.slice(-2).forEach(function(k){ selMonths[k] = true; });
+    selSegs = {}; C.DEFAULT_SEGS.forEach(function(s){ selSegs[s] = true; });
+    setSync('ok');
+    $('SO_footerNote').innerHTML = 'Nguồn: Google Sheet "DOANH THU OPPO" — sheet CÁC THÁNG · đã đọc ' + fmt(STATS.total) + ' dòng, ' +
+      fmt(STATS.kept) + ' dòng thuộc 12 shop' + (STATS.noDate ? ', ' + fmt(STATS.noDate) + ' dòng thiếu ngày (bỏ qua)' : '') +
+      ' · cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN');
+    renderAll();
+  }
+
+  // ---- bộ lọc ----
+  function buildShopSelect(){
+    var sel = $('SO_shopSelect');
+    sel.innerHTML = '<option value="">Tất cả ' + C.SHOPS.length + ' shop</option>' + C.SHOPS.map(function(s){ return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+    sel.value = shop;
+  }
+  function renderChips(){
+    $('SO_monthChips').innerHTML = MONTHS.map(function(k){
+      var i = INFO[k];
+      var tip = 'Ngày ' + i.minDay + '–' + i.maxDay + (i.complete ? ' (đủ tháng)' : ' (chưa đủ tháng)') + ' · ' + fmt(i.rows) + ' dòng (12 shop)';
+      return '<button type="button" class="so-chip' + (selMonths[k] ? ' on' : '') + '" data-m="' + k + '" title="' + esc(tip) + '">' + mLabelLong(k) + '</button>';
+    }).join('');
+    $('SO_segChips').innerHTML = C.SEGMENTS.map(function(s){
+      return '<button type="button" class="so-chip' + (selSegs[s] ? ' on' : '') + '" data-s="' + esc(s) + '">' + segLabel(s) + '</button>';
+    }).join('');
+  }
+
+  $('SO_monthChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-m]'); if(!b) return;
+    var k = b.getAttribute('data-m');
+    if(selMonths[k]){ if(selected().length <= 1) return; delete selMonths[k]; } else selMonths[k] = true;
+    renderAll();
+  });
+  $('SO_segChips').addEventListener('click', function(e){
+    var b = e.target.closest('[data-s]'); if(!b) return;
+    var s = b.getAttribute('data-s');
+    if(selSegs[s]){ if(selectedSegs().length <= 1) return; delete selSegs[s]; } else selSegs[s] = true;
+    renderAll();
+  });
+  $('SO_monthAll').addEventListener('click', function(){ selMonths = {}; MONTHS.forEach(function(k){ selMonths[k] = true; }); renderAll(); });
+  $('SO_monthLatest').addEventListener('click', function(){ selMonths = {}; MONTHS.slice(-2).forEach(function(k){ selMonths[k] = true; }); renderAll(); });
+  $('SO_seg330').addEventListener('click', function(){ selSegs = {}; C.DEFAULT_SEGS.forEach(function(s){ selSegs[s] = true; }); renderAll(); });
+  $('SO_segAll').addEventListener('click', function(){ selSegs = {}; C.SEGMENTS.forEach(function(s){ selSegs[s] = true; }); renderAll(); });
+  $('SO_shopSelect').addEventListener('change', function(){ shop = this.value; renderAll(); });
+  $('SO_sameDays').addEventListener('change', function(){ sameDays = this.checked; renderAll(); });
+
+  // ---- cảnh báo / ghi chú ----
+  function renderNotices(sel, cut){
+    var msgs = [], box = $('SO_notice');
+    if(loadErr){ box.innerHTML = '<div class="so-notice err">⚠ ' + esc(loadErr) + '</div>'; return; }
+    if(!ROWS){ box.innerHTML = ''; return; }
+    MONTHS.forEach(function(k){
+      var banners = Object.keys(INFO[k].banners);
+      banners.forEach(function(b){
+        var m = /(\d{1,2})/.exec(b);
+        if(m && +m[1] !== INFO[k].m){
+          msgs.push('Nhãn "<b>' + esc(b) + '</b>" trong Sheet nhưng ngày xuất hàng của khối này thuộc <b>' + mLabelLong(k) + '</b> — dashboard tính tháng theo <b>ngày xuất hàng</b>, không theo nhãn.');
+        }
+      });
+    });
+    if(MONTHS.length === 1) msgs.push('Tab CÁC THÁNG mới có <b>1 tháng</b> (' + mLabelLong(MONTHS[0]) + '). Thêm dữ liệu tháng khác vào tab để so sánh giữa các tháng.');
+    else if(sel.length === 1) msgs.push('Đang chọn 1 tháng — chọn thêm tháng ở bộ lọc để so sánh.');
+    box.innerHTML = msgs.length ? '<div class="so-notice"><ul>' + msgs.map(function(m){ return '<li>' + m + '</li>'; }).join('') + '</ul></div>' : '';
+  }
+
+  function rangeText(k, cut){
+    var i = INFO[k], to = Math.min(i.maxDay, cut);
+    return mLabel(k) + ': ngày ' + i.minDay + '–' + to + (cut < i.maxDay ? ' (cắt từ ' + i.minDay + '–' + i.maxDay + ')' : (i.complete ? ' (đủ tháng)' : ' (chưa đủ)'));
+  }
+
+  // ---- tiện ích dựng bảng ----
+  function head(first, sel, sub, delta){
+    var multi = sel.length > 1;
+    var r1 = '<tr><th rowspan="2">' + first + '</th>' + sel.map(function(k){ return '<th class="group-header" colspan="' + sub.length + '">' + mLabel(k) + '</th>'; }).join('');
+    if(multi) r1 += '<th class="group-header" colspan="' + delta.length + '">Δ ' + mLabel(sel[sel.length - 1]) + ' so với ' + mLabel(sel[0]) + '</th>';
+    r1 += '</tr>';
+    var r2 = '<tr>' + sel.map(function(){ return sub.map(function(c){ return '<th class="num">' + c + '</th>'; }).join(''); }).join('') +
+      (multi ? delta.map(function(c){ return '<th class="num">' + c + '</th>'; }).join('') : '') + '</tr>';
+    return r1 + r2;
+  }
+  function td(v, extra){ return '<td class="num"' + (extra ? ' style="' + extra + '"' : '') + '>' + v + '</td>'; }
+
+  function mk(id, cfg){
+    if(charts[id]){ try{ charts[id].destroy(); }catch(e){} delete charts[id]; }
+    var el = $(id);
+    if(!el || typeof Chart === 'undefined') return;
+    try{ charts[id] = new Chart(el, cfg); }catch(e){ console.error('S.O THÁNG: không vẽ được ' + id, e); }
+  }
+  var AX = { ticks: { color: '#64748B' }, grid: { color: 'rgba(15,23,42,0.08)' } };
+
+  // ---- vẽ lại toàn bộ ----
+  function renderAll(){
+    buildShopSelect();
+    $('SO_sameDays').checked = sameDays;
+    var hasData = !!ROWS;
+    $('SO_body').style.display = hasData ? '' : 'none';
+    $('SO_empty').style.display = hasData ? 'none' : '';
+    if(!hasData){
+      if(loadErr) $('SO_empty').innerHTML = '<div class="empty">' + (loading ? 'Đang tải…' : 'Chưa có dữ liệu để hiển thị.') + '</div>';
+      $('SO_monthChips').innerHTML = ''; $('SO_segChips').innerHTML = ''; $('SO_rangeNote').textContent = '';
+      renderNotices([], 31);
+      return;
+    }
+    var sel = selected();
+    if(!sel.length){ MONTHS.slice(-2).forEach(function(k){ selMonths[k] = true; }); sel = selected(); }
+    var segs = selectedSegs();
+    var cut = C.cutoff(sel, INFO, sameDays);
+    var A = C.aggregate(ROWS, { months: sel, cutoff: cut, segs: segs, shop: shop });
+
+    renderChips();
+    renderNotices(sel, cut);
+
+    // ghi chú phạm vi ngày
+    var anyIncomplete = sel.some(function(k){ return !INFO[k].complete; });
+    var note = sel.map(function(k){ return rangeText(k, cut); }).join(' · ');
+    if(sameDays && anyIncomplete) note += '<br>→ So sánh <b>cùng kỳ</b>: chỉ tính ngày 1–' + cut + ' của mỗi tháng (tháng mới chưa đủ).';
+    else if(!sameDays && anyIncomplete) note += '<br>→ Đang so sánh <b>cả tháng</b>: tháng chưa đủ ngày sẽ thấp hơn thực tế.';
+    else note += '<br>→ Các tháng đã chọn đều đủ ngày: so sánh cả tháng.';
+    $('SO_rangeNote').innerHTML = note;
+
+    var scope = (shop ? esc(shop) : 'Cả ' + C.SHOPS.length + ' shop') + ' · phân khúc ' + (segs.length === C.DEFAULT_SEGS.length && segs.every(function(s, i){ return s === C.DEFAULT_SEGS[i]; }) ? '3M–30M' : segs.map(segLabel).join(', ')) +
+      ' · ' + (cut < 31 ? 'cùng kỳ ngày 1–' + cut : 'cả tháng');
+    ['SO_scope1', 'SO_scope2', 'SO_scope3'].forEach(function(id){ $(id).innerHTML = 'Phạm vi: ' + scope; });
+
+    renderSection1(sel, A);
+    renderSection2(sel, A, segs);
+    renderSection3(sel, A, segs);
+  }
+
+  // ===== 1. Tổng =====
+  function renderSection1(sel, A){
+    var n = sel.length;
+    // thẻ
+    $('SO_cards').innerHTML = sel.map(function(k, i){
+      var a = A.byMonth[k], inf = INFO[k];
+      var prev = i ? A.byMonth[sel[i - 1]] : null;
+      var delta = '';
+      if(prev){
+        delta = '<div class="so-card-delta">so với ' + mLabel(sel[i - 1]) + ': ' + dQty(a.oppoQty - prev.oppoQty) + ' máy (' + dRel(prev.oppoQty, a.oppoQty) + ')<br>Thị phần: ' + dPt(C.share(a) - C.share(prev)) +
+          ' · Thị trường: ' + dQty(a.totalQty - prev.totalQty) + '</div>';
+      }
+      return '<div class="so-card' + (i === n - 1 ? ' latest' : '') + '"><div class="so-card-title"><span>' + mLabelLong(k) + '</span><span class="so-tag" data-k="' + k + '">' + (inf.complete ? 'đủ tháng' : 'đến ngày ' + inf.maxDay) + '</span></div>' +
+        '<div class="so-card-main">' + fmt(a.oppoQty) + ' <small>máy OPPO</small></div>' +
+        '<div class="so-card-sub">Thị phần <b>' + (a.totalQty ? pct(C.share(a)) : '—') + '</b> · Thị trường ' + fmt(a.totalQty) + ' máy</div>' + delta + '</div>';
+    }).join('');
+
+    // biểu đồ tổng: cột = sell-out OPPO, đường = thị phần
+    var labels = sel.map(mLabel);
+    var qty = sel.map(function(k){ return A.byMonth[k].oppoQty; });
+    var shr = sel.map(function(k){ return Math.round(C.share(A.byMonth[k]) * 1000) / 10; });
+    mk('SO_chartTotal', {
+      type: 'bar',
+      data: { labels: labels, datasets: [
+        { type: 'bar', label: 'Sell-out OPPO (máy)', data: qty, backgroundColor: '#0F9488', borderRadius: 4, yAxisID: 'y', order: 2,
+          datalabels: { anchor: 'end', align: 'end', color: '#0F766E', font: { weight: '700', size: 11 }, formatter: function(v){ return fmt(v); } } },
+        { type: 'line', label: 'Thị phần OPPO (%)', data: shr, borderColor: '#B45309', backgroundColor: '#B45309', yAxisID: 'y1', tension: 0.25, pointRadius: 4, order: 1,
+          datalabels: { anchor: 'end', align: 'top', color: '#B45309', font: { weight: '700', size: 11 }, formatter: function(v){ return String(v).replace('.', ',') + '%'; } } }
+      ] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Sell-out OPPO & thị phần theo tháng', font: { size: 13 } }, legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: true },
+          tooltip: { callbacks: { label: function(c){ return c.dataset.label + ': ' + (c.datasetIndex === 1 ? String(c.parsed.y).replace('.', ',') + '%' : fmt(c.parsed.y)); } } } },
+        scales: { x: { grid: { display: false }, ticks: { color: '#64748B' } },
+          y: { beginAtZero: true, grace: '18%', ticks: AX.ticks, grid: AX.grid },
+          y1: { position: 'right', beginAtZero: true, grace: '30%', grid: { drawOnChartArea: false }, ticks: { color: '#B45309', callback: function(v){ return v + '%'; } } } } }
+    });
+
+    // biểu đồ thị phần các hãng (cột chồng 100%)
+    var totals = sel.map(function(k){ return A.byMonth[k].totalQty; });
+    mk('SO_chartBrand', {
+      type: 'bar',
+      data: { labels: labels, datasets: C.BRANDS.map(function(b){
+        return { label: b, backgroundColor: BRAND_COLORS[b], data: sel.map(function(k, i){ return totals[i] ? Math.round(A.byBrand[k][b] / totals[i] * 1000) / 10 : 0; }),
+          datalabels: { color: '#fff', font: { size: 10, weight: '700' }, formatter: function(v){ return v >= 4 ? String(Math.round(v)) + '%' : ''; } } };
+      }) },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Thị phần các hãng theo tháng (%)', font: { size: 13 } }, legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: true },
+          tooltip: { callbacks: { label: function(c){ var k = sel[c.dataIndex]; return c.dataset.label + ': ' + String(c.parsed.y).replace('.', ',') + '% (' + fmt(A.byBrand[k][c.dataset.label]) + ' máy)'; } } } },
+        scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#64748B' } }, y: { stacked: true, max: 100, ticks: { color: '#64748B', callback: function(v){ return v + '%'; } }, grid: AX.grid } } }
+    });
+
+    // bảng theo hãng
+    $('SO_brandHead').innerHTML = head('Hãng', sel, ['Sell-out', 'Share'], ['Δ Sell-out', 'Δ Share']);
+    var first = sel[0], last = sel[n - 1], multi = n > 1;
+    var body = C.BRANDS.map(function(b){
+      var cells = sel.map(function(k){ var t = A.byMonth[k].totalQty; return td(fmt(A.byBrand[k][b])) + td(t ? pct(A.byBrand[k][b] / t) : '—'); }).join('');
+      var dl = '';
+      if(multi){
+        var t0 = A.byMonth[first].totalQty, t1 = A.byMonth[last].totalQty;
+        dl = td(dQty(A.byBrand[last][b] - A.byBrand[first][b])) + td(dPt((t1 ? A.byBrand[last][b] / t1 : 0) - (t0 ? A.byBrand[first][b] / t0 : 0)));
+      }
+      return '<tr' + (b === 'OPPO' ? ' class="so-hl"' : '') + '><td style="font-weight:' + (b === 'OPPO' ? '700' : '500') + ';color:' + BRAND_COLORS[b] + '">' + b + '</td>' + cells + dl + '</tr>';
+    }).join('');
+    var totalRow = '<tr class="total-row"><td>TỔNG</td>' + sel.map(function(k){ return td(fmt(A.byMonth[k].totalQty)) + td('100%'); }).join('') +
+      (multi ? td(dQty(A.byMonth[last].totalQty - A.byMonth[first].totalQty)) + td('') : '') + '</tr>';
+    $('SO_brandBody').innerHTML = body + totalRow;
+  }
+
+  // ===== 2. Thị phần theo phân khúc / shop =====
+  function shareCells(o){ return td(fmt(o.oppoQty)) + td(fmt(o.totalQty)) + td(o.totalQty ? pct(C.share(o)) : '—'); }
+  function renderSection2(sel, A, segs){
+    var n = sel.length, first = sel[0], last = sel[n - 1], multi = n > 1;
+    // biểu đồ: thị phần OPPO theo phân khúc, mỗi tháng 1 màu
+    mk('SO_chartSeg', {
+      type: 'bar',
+      data: { labels: segs.map(segLabel), datasets: sel.map(function(k, i){
+        return { label: mLabel(k), backgroundColor: mColor(i, n), borderRadius: 3,
+          data: segs.map(function(s){ return Math.round(C.share(A.bySeg[k][s]) * 1000) / 10; }),
+          datalabels: { anchor: 'end', align: 'end', color: '#1F2937', font: { size: 10, weight: '600' }, formatter: function(v){ return v ? String(v).replace('.', ',') + '%' : '0%'; } } };
+      }) },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Thị phần OPPO theo phân khúc (%)', font: { size: 13 } }, legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: true },
+          tooltip: { callbacks: { label: function(c){ var k = sel[c.datasetIndex], s = segs[c.dataIndex], o = A.bySeg[k][s]; return mLabel(k) + ': ' + String(c.parsed.y).replace('.', ',') + '% (' + fmt(o.oppoQty) + '/' + fmt(o.totalQty) + ' máy)'; } } } },
+        scales: { x: { grid: { display: false }, ticks: { color: '#64748B' } }, y: { beginAtZero: true, grace: '15%', ticks: { color: '#64748B', callback: function(v){ return v + '%'; } }, grid: AX.grid } } }
+    });
+
+    // bảng theo phân khúc
+    $('SO_segHead').innerHTML = head('Phân khúc', sel, ['OPPO', 'Tổng', 'Share'], ['Δ OPPO', 'Δ Share']);
+    function deltaShare(a, b){ return td(dQty(b.oppoQty - a.oppoQty)) + td(dPt(C.share(b) - C.share(a))); }
+    var rowsSeg = segs.map(function(s){
+      return '<tr><td>' + segLabel(s) + '</td>' + sel.map(function(k){ return shareCells(A.bySeg[k][s]); }).join('') + (multi ? deltaShare(A.bySeg[first][s], A.bySeg[last][s]) : '') + '</tr>';
+    }).join('');
+    $('SO_segBody').innerHTML = rowsSeg + '<tr class="total-row"><td>TỔNG</td>' + sel.map(function(k){ return shareCells(A.byMonth[k]); }).join('') + (multi ? deltaShare(A.byMonth[first], A.byMonth[last]) : '') + '</tr>';
+
+    // bảng theo shop
+    $('SO_shopHead').innerHTML = head('Shop', sel, ['OPPO', 'Tổng', 'Share'], ['Δ OPPO', 'Δ Share']);
+    var rowsShop = A.shops.map(function(sh){
+      return '<tr><td>' + esc(sh) + '</td>' + sel.map(function(k){ return shareCells(A.byShop[k][sh]); }).join('') + (multi ? deltaShare(A.byShop[first][sh], A.byShop[last][sh]) : '') + '</tr>';
+    }).join('');
+    $('SO_shopBody').innerHTML = rowsShop + '<tr class="total-row"><td>TỔNG</td>' + sel.map(function(k){ return shareCells(A.byMonth[k]); }).join('') + (multi ? deltaShare(A.byMonth[first], A.byMonth[last]) : '') + '</tr>';
+  }
+
+  // ===== 3. Doanh thu =====
+  function renderSection3(sel, A, segs){
+    var n = sel.length, first = sel[0], last = sel[n - 1], multi = n > 1;
+    var axisMoney = { beginAtZero: true, grace: '15%', ticks: { color: '#64748B', callback: function(v){ return moneyShort(v); } }, grid: AX.grid };
+
+    mk('SO_chartRevSeg', {
+      type: 'bar',
+      data: { labels: segs.map(segLabel), datasets: sel.map(function(k, i){
+        return { label: mLabel(k), backgroundColor: mColor(i, n), borderRadius: 3, data: segs.map(function(s){ return A.bySeg[k][s].oppoRev; }),
+          datalabels: { anchor: 'end', align: 'end', color: '#1F2937', font: { size: 9.5, weight: '600' }, formatter: function(v){ return v ? moneyShort(v) : ''; } } };
+      }) },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Doanh thu OPPO theo phân khúc', font: { size: 13 } }, legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: true },
+          tooltip: { callbacks: { label: function(c){ return mLabel(sel[c.datasetIndex]) + ': ' + fmt(c.parsed.y) + ' đ'; } } } },
+        scales: { x: { grid: { display: false }, ticks: { color: '#64748B' } }, y: axisMoney } }
+    });
+
+    // bảng doanh thu theo phân khúc
+    $('SO_revSegHead').innerHTML = head('Phân khúc', sel, ['Doanh thu OPPO (đ)', 'Tỉ trọng'], ['Δ (đ)', 'Δ %']);
+    function revCells(o, tot){ return td(fmt(o.oppoRev)) + td(tot ? pct(o.oppoRev / tot) : '—'); }
+    function revDelta(a, b){ return td(dMoney(b.oppoRev - a.oppoRev)) + td(dRel(a.oppoRev, b.oppoRev)); }
+    var rowsRevSeg = segs.map(function(s){
+      return '<tr><td>' + segLabel(s) + '</td>' + sel.map(function(k){ return revCells(A.bySeg[k][s], A.byMonth[k].oppoRev); }).join('') + (multi ? revDelta(A.bySeg[first][s], A.bySeg[last][s]) : '') + '</tr>';
+    }).join('');
+    $('SO_revSegBody').innerHTML = rowsRevSeg + '<tr class="total-row"><td>TỔNG</td>' + sel.map(function(k){ return revCells(A.byMonth[k], A.byMonth[k].oppoRev); }).join('') + (multi ? revDelta(A.byMonth[first], A.byMonth[last]) : '') + '</tr>';
+
+    // biểu đồ doanh thu từng shop (cột ngang)
+    var shops = A.shops;
+    $('SO_revShopBox').style.height = Math.max(280, 70 + shops.length * (n * 17 + 14)) + 'px';
+    mk('SO_chartRevShop', {
+      type: 'bar',
+      data: { labels: shops, datasets: sel.map(function(k, i){
+        return { label: mLabel(k), backgroundColor: mColor(i, n), borderRadius: 3, data: shops.map(function(sh){ return A.byShop[k][sh].oppoRev; }),
+          datalabels: { anchor: 'end', align: 'end', color: '#1F2937', font: { size: 9.5, weight: '600' }, formatter: function(v){ return v ? moneyShort(v) : ''; } } };
+      }) },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { title: { display: true, text: 'Doanh thu OPPO từng shop', font: { size: 13 } }, legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, datalabels: { display: true },
+          tooltip: { callbacks: { label: function(c){ return mLabel(sel[c.datasetIndex]) + ': ' + fmt(c.parsed.x) + ' đ'; } } } },
+        scales: { x: axisMoney, y: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 10 } } } } }
+    });
+
+    // bảng doanh thu từng shop
+    $('SO_revShopHead').innerHTML = head('Shop', sel, ['Doanh thu OPPO (đ)', 'SL OPPO'], ['Δ (đ)', 'Δ %']);
+    function shopCells(o){ return td(fmt(o.oppoRev)) + td(fmt(o.oppoQty)); }
+    var rowsRevShop = shops.map(function(sh){
+      return '<tr><td>' + esc(sh) + '</td>' + sel.map(function(k){ return shopCells(A.byShop[k][sh]); }).join('') + (multi ? revDelta(A.byShop[first][sh], A.byShop[last][sh]) : '') + '</tr>';
+    }).join('');
+    $('SO_revShopBody').innerHTML = rowsRevShop + '<tr class="total-row"><td>TỔNG</td>' + sel.map(function(k){ return shopCells(A.byMonth[k]); }).join('') + (multi ? revDelta(A.byMonth[first], A.byMonth[last]) : '') + '</tr>';
+  }
+
+  // ---- xuất ra ngoài ----
+  window.SO_loadData = load;
+  window.SO_ingest = ingest; // dùng cho kiểm thử
+  window.SO_refresh = function(){ if(!ROWS && !loading) load(); else renderAll(); };
+  buildShopSelect();
+})();
+</script>
+
 <script>
 // ==== Chuyển tab ====
 (function(){
-  const REFRESH = { tp:'TP_refresh', sb:'SB_refresh', dt:'DT_refresh', cn:'CN_refresh' };
+  const REFRESH = { tp:'TP_refresh', sb:'SB_refresh', dt:'DT_refresh', cn:'CN_refresh', so:'SO_refresh' };
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const tab = btn.dataset.tab;
